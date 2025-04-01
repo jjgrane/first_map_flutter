@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
@@ -22,13 +24,11 @@ class _MapViewState extends State<MapView> {
   LatLng? _currentLocation;
   final Set<Marker> _markers = {};
 
-  final LatLng _marker1 = const LatLng(-34.5928772, -58.3780337);
-  final LatLng _marker2 = const LatLng(-34.5933644, -58.3858018);
 
   @override
   void initState() {
     super.initState();
-    _initializeMarkers();
+    _loadMarkersFromFirestore();
     _getLocationUpdates();
   }
 
@@ -52,20 +52,25 @@ class _MapViewState extends State<MapView> {
     );
   }
 
-  void _initializeMarkers() {
-    _markers.addAll([
-      Marker(
-        markerId: MarkerId("m1"),
-        position: _marker1,
-        infoWindow: InfoWindow(title: "GooglePlex?"),
+Future<void> _loadMarkersFromFirestore() async {
+  final snapshot = await FirebaseFirestore.instance.collection('markers').get();
+
+  final newMarkers = snapshot.docs.map((doc) {
+    final data = doc.data();
+    return Marker(
+      markerId: MarkerId(doc.id),
+      position: LatLng(
+        data['latitude'] as double,
+        data['longitude'] as double,
       ),
-      Marker(
-        markerId: MarkerId("m2"),
-        position: _marker2,
-        infoWindow: InfoWindow(title: "Clorindo"),
-      ),
-    ]);
-  }
+      infoWindow: InfoWindow(title: data['title'] ?? 'No title'),
+    );
+  }).toSet();
+
+  setState(() {
+    _markers.addAll(newMarkers);
+  });
+}
 
   void _getLocationUpdates() async {
     bool serviceEnabled = await _locationController.serviceEnabled();

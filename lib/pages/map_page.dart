@@ -28,7 +28,6 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final mapReady = _mapController != null && _currentLocation != null;
 
     return Scaffold(
       body: Container(
