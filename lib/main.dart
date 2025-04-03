@@ -6,7 +6,7 @@ import 'pages/map_page.dart'; // Asegurate de tener este archivo en lib/
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: DefaultFirebaseOptions.ios, // 👈 Force iOS-specific config
   );
   runApp(const MyApp());
 }
@@ -22,3 +22,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
+//./fix_flutter.sh

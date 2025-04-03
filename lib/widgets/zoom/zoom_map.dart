@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class ZoomButton extends StatelessWidget {
+class ZoomMap extends StatelessWidget {
   final GoogleMapController mapController;
   final double zoomDelta;
   final IconData icon;
   final String heroTag;
 
-  const ZoomButton({
+  const ZoomMap({
     super.key,
     required this.mapController,
     required this.zoomDelta,
@@ -43,7 +43,12 @@ class ZoomButton extends StatelessWidget {
       heroTag: heroTag,
       mini: true,
       onPressed: _handleZoom,
-      child: Icon(icon),
+      backgroundColor: Colors.white,
+      elevation: 1, // leve sombra como Google Maps
+      child: Icon(
+        icon,
+        color: Colors.grey[800], // tono oscuro, pero no negro total
+      ),
     );
   }
 }
