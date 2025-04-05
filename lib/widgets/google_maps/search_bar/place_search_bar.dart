@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/google_maps/search_bar/place_search_autocomplete.dart';
 
 class PlaceSearchBar extends StatelessWidget {
   final TextEditingController textController;
   final String apiKey;
+  final GoogleMapController mapController;
   final void Function(String) onPlaceSelected;
 
   const PlaceSearchBar({
     super.key,
     required this.textController,
     required this.apiKey,
+    required this.mapController,
     required this.onPlaceSelected,
   });
 
@@ -26,12 +29,13 @@ class PlaceSearchBar extends StatelessWidget {
             color: Colors.black.withOpacity(0.1),
             blurRadius: 6,
             offset: const Offset(0, 3),
-          )
+          ),
         ],
       ),
       child: PlaceSearchAutocomplete(
         textController: textController,
         apiKey: apiKey,
+        mapController: mapController,
         onPlaceSelected: onPlaceSelected,
       ),
     );

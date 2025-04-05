@@ -13,12 +13,14 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
+
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   Marker? _searchMarker;
+
   final String _googleApiKey = 'AIzaSyBiZ7jrSQuqi50YPIh7uUBzkmnzhoTulAs';
-  // Dentro del widget:
   final TextEditingController _searchController = TextEditingController();
+  
 
   void _handleMapCreated(GoogleMapController controller) {
     setState(() {
@@ -48,6 +50,7 @@ class _MapPageState extends State<MapPage> {
             PlaceSearchBar(
               textController: _searchController,
               apiKey: _googleApiKey,
+              mapController: _mapController!,
               onPlaceSelected: _handlePlaceSelected,
             ),
             // ZOOM BUTTONS
@@ -66,9 +69,9 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<void> _handlePlaceSelected(String place) async {
+  Future<void> _handlePlaceSelected(String placeId) async {
     final placesService = PlacesService(_googleApiKey);
-    final LatLng? coords = await placesService.getCoordinatesFromPlace(place);
+    final LatLng? coords = await placesService.getCoordinatesFromPlaceId(placeId);
 
     if (coords != null && _mapController != null) {
       // Agrega marcador momentáneo
@@ -76,7 +79,6 @@ class _MapPageState extends State<MapPage> {
         markerId: const MarkerId('search_marker'),
         position: coords,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        infoWindow: InfoWindow(title: place),
       );
 
       setState(() {

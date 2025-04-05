@@ -20,10 +20,10 @@ class MapView extends StatefulWidget {
 }
 
 class _MapViewState extends State<MapView> {
-  final Location _locationController = Location();
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   final Set<Marker> _markers = {};
+  final Location _locationController = Location();
 
   // Valor por defecto (puede ser tu centro de referencia)
   static const LatLng _defaultCenter = LatLng(-34.5928772, -58.3780337);
