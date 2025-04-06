@@ -1,20 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:first_maps_project/widgets/google_maps/search_bar/autocomplete_result.dart';
+import 'package:first_maps_project/widgets/place_information.dart';
 
 class PlacesService {
   final String apiKey;
 
   PlacesService(this.apiKey);
 
-  Future<List<AutocompleteResult>> getAutocomplete(
+  Future<List<PlaceInformation>> getAutocomplete(
+    //https://developers.google.com/maps/documentation/places/web-service/autocomplete?hl=es-419
     String input,
     LatLng? location,
   ) async {
     final locationParam =
         location != null
-            ? '&location=${location.latitude},${location.longitude}&radius=30000'
+            ? '&location=${location.latitude},${location.longitude}&radius=3000'
             : '';
 
     final url = Uri.parse(
@@ -33,8 +34,8 @@ class PlacesService {
       return predictions
           .where((p) => p['description'] != null && p['place_id'] != null)
           .map(
-            (p) => AutocompleteResult(
-              description: p['description'],
+            (p) => PlaceInformation(
+              name: p['description'],
               placeId: p['place_id'],
             ),
           )
@@ -44,7 +45,8 @@ class PlacesService {
     }
   }
 
-  Future<LatLng?> getCoordinatesFromPlaceId(String placeId) async {
+  Future<PlaceInformation?> getPlaceDetails(String placeId) async {
+    //https://developers.google.com/maps/documentation/places/web-service/details?hl=es-419
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=$apiKey',
     );
@@ -53,10 +55,14 @@ class PlacesService {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
       if (json['status'] == 'OK') {
-        final location = json['result']['geometry']['location'];
-        return LatLng(location['lat'], location['lng']);
-      } else {
-        print('❗ Place Details error: ${json['status']}');
+        final result = json['result'];
+        final location = result['geometry']['location'];
+        return PlaceInformation(
+          name: result['name'],        
+          placeId: placeId,
+          address: result['formatted_address'],
+          location: LatLng(location['lat'], location['lng']),
+        );
       }
     }
     return null;

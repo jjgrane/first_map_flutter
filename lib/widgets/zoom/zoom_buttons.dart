@@ -3,12 +3,16 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/zoom/zoom_map.dart';
 
 class ZoomButtons extends StatelessWidget {
+  final double bottom;
+  final double right;
   final GoogleMapController mapController;
   final double zoomDelta;
   final double split;
 
   const ZoomButtons({
     super.key,
+    required this.bottom,
+    required this.right,
     required this.mapController,
     required this.zoomDelta,
     required this.split,
@@ -16,7 +20,10 @@ class ZoomButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  Column(
+    return Positioned(
+      bottom: 90,
+      right: 10,
+      child: Column(
         children: [
           ZoomMap(
             mapController: mapController!,
@@ -32,6 +39,7 @@ class ZoomButtons extends StatelessWidget {
             heroTag: 'zoomOut',
           ),
         ],
-      );
+      ),
+    );
   }
 }
