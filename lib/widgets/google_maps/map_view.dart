@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:first_maps_project/widgets/place_information.dart';
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
@@ -16,10 +17,10 @@ class MapView extends StatefulWidget {
   });
 
   @override
-  State<MapView> createState() => _MapViewState();
+  State<MapView> createState() => MapViewState();
 }
 
-class _MapViewState extends State<MapView> {
+class MapViewState extends State<MapView> {
   GoogleMapController? _mapController;
   LatLng? _currentLocation;
   final Set<Marker> _markers = {};
@@ -72,17 +73,23 @@ class _MapViewState extends State<MapView> {
     final newMarkers =
         snapshot.docs
             .map((doc) {
-              final data = doc.data();
-              final lat = data['lat'];
-              final lng = data['long'];
+              try {
+                final place = PlaceInformation.fromFirestore(
+                  doc.data(),
+                  doc.id,
+                );
 
-              if (lat == null || lng == null) return null;
+                if (place.location == null) return null;
 
-              return Marker(
-                markerId: MarkerId(doc.id),
-                position: LatLng(lat as double, lng as double),
-                infoWindow: InfoWindow(title: data['name'] ?? 'Sin nombre'),
-              );
+                return Marker(
+                  markerId: MarkerId(place.placeId),
+                  position: place.location!,
+                  infoWindow: InfoWindow(title: place.name),
+                );
+              } catch (e) {
+                debugPrint('❌ Error parsing marker ${doc.id}: $e');
+                return null;
+              }
             })
             .whereType<Marker>()
             .toSet();
@@ -118,5 +125,9 @@ class _MapViewState extends State<MapView> {
         widget.onLocationChanged(newLocation); // Send location to parent
       }
     });
+  }
+
+  Future<void> reloadMarkers() async {
+    await _loadMarkersFromFirestore();
   }
 }

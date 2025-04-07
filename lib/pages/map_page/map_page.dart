@@ -22,11 +22,11 @@ class _MapPageState extends State<MapPage> {
   LatLng? _currentLocation;
   Marker? _searchMarker;
   PlaceInformation? _selectedPlace;
-  LatLng? _cameraCenter;
 
   final String _googleApiKey = 'AIzaSyBiZ7jrSQuqi50YPIh7uUBzkmnzhoTulAs';
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final GlobalKey<MapViewState> _mapKey = GlobalKey<MapViewState>();
 
   void _handleMapCreated(GoogleMapController controller) {
     setState(() {
@@ -50,6 +50,7 @@ class _MapPageState extends State<MapPage> {
         body: Stack(
           children: [
             MapView(
+              key: _mapKey,
               onMapCreated: _handleMapCreated,
               onLocationChanged: _handleLocationChanged,
               searchMarker: _searchMarker,
@@ -91,7 +92,7 @@ class _MapPageState extends State<MapPage> {
                       context,
                       MaterialPageRoute(
                         builder:
-                            (_) => PlaceDetailsPage(place: _selectedPlace!),
+                            (_) => PlaceDetailsPage(place: _selectedPlace!, mapViewKey: _mapKey,),
                       ),
                     );
                   },
