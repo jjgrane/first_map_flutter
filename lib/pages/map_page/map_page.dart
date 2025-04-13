@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/zoom/zoom_buttons.dart';
 import 'package:first_maps_project/widgets/google_maps/map_view.dart';
@@ -23,7 +23,7 @@ class _MapPageState extends State<MapPage> {
   Marker? _searchMarker;
   PlaceInformation? _selectedPlace;
 
-  final String _googleApiKey = 'AIzaSyBiZ7jrSQuqi50YPIh7uUBzkmnzhoTulAs';
+  final String _googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY']!;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final GlobalKey<MapViewState> _mapKey = GlobalKey<MapViewState>();
@@ -111,17 +111,17 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<void> _handlePlaceSelected(PlaceInformation place) async {
+  Future<void> _handlePlaceSelected(PlaceInformation place, String? sessionToken) async {
     if (context.mounted) {
       Navigator.pop(context);
     }
 
     final placesService = PlacesService(_googleApiKey);
 
-    // Si no tenemos coordenadas, las pedimos
+    // Si no tenemos coordenadas, las pedimos -- OPTIMIZABLE, ESTO DEBERIA SALIR DE BASE DE DATOS.
     PlaceInformation? updatedPlace = place;
     if (place.location == null) {
-      updatedPlace = await placesService.getPlaceDetails(place.placeId);
+      updatedPlace = await placesService.getPlaceDetails(place.placeId, sessionToken);
     }
 
     if (updatedPlace == null) {

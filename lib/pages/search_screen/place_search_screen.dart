@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:first_maps_project/services/places_service.dart';
 import 'package:first_maps_project/widgets/place_information.dart';
 import 'package:first_maps_project/widgets/google_maps/place_search_autocomplete.dart';
 
@@ -8,7 +7,7 @@ class PlaceSearchScreen extends StatefulWidget {
   final String apiKey;
   final LatLng cameraCenter;
   final TextEditingController textController;
-  final void Function(PlaceInformation) onPlaceSelected;
+  final void Function(PlaceInformation, String?) onPlaceSelected;
 
   const PlaceSearchScreen({
     super.key,
