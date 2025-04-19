@@ -1,66 +1,62 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 class PlaceSearchBar extends StatelessWidget {
   final VoidCallback onTap;
-  final String? displayText;
+  final String displayText;
 
   const PlaceSearchBar({
     super.key,
     required this.onTap,
-    this.displayText,
+    required this.displayText,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusBarHeight = MediaQuery.of(context).padding.top;
-    final showText = displayText != null && displayText!.trim().isNotEmpty;
-    final textColor = showText ? Colors.black : Colors.grey;
-    final text = showText ? displayText! : "Buscar lugar...";
+    final textColor = Colors.black;
+    final text = displayText;
 
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: ClipRRect(
-        child: BackdropFilter(
-          // Fondo desenfocado
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: GestureDetector(
+          onTap: onTap,
           child: Container(
-            height: statusBarHeight + 85, // 85 para incluir el buscador con algo de margen
-            color: Colors.white.withOpacity(0.6),
-            padding: EdgeInsets.fromLTRB(20, statusBarHeight + 10, 20, 0), // 👈 justo debajo del notch
-            alignment: Alignment.topCenter,
-            child: GestureDetector(
-              onTap: onTap,
-              child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        text,
-                        style: TextStyle(color: textColor),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              ],
+            ),
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                    'assets/icons/F_ISO_Celeste_Naranja.svg',
+                    width: 30,
+                    height: 30,
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontFamily: 'Merino',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 18,
+                      color: textColor,
                     ),
-                  ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

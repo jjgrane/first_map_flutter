@@ -3,16 +3,15 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:first_maps_project/widgets/place_information.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
-  final Function(LatLng) onLocationChanged;
   final Marker? searchMarker;
 
   const MapView({
     super.key,
     required this.onMapCreated,
-    required this.onLocationChanged,
     this.searchMarker,
   });
 
@@ -21,10 +20,10 @@ class MapView extends StatefulWidget {
 }
 
 class MapViewState extends State<MapView> {
-  GoogleMapController? _mapController;
   LatLng? _currentLocation;
   final Set<Marker> _markers = {};
   final Location _locationController = Location();
+  String? _mapStyle; 
 
   // Valor por defecto (puede ser tu centro de referencia)
   static const LatLng _defaultCenter = LatLng(-34.5928772, -58.3780337);
@@ -32,8 +31,13 @@ class MapViewState extends State<MapView> {
   @override
   void initState() {
     super.initState();
+    _loadMapStyle();
     _loadMarkersFromFirestore();
     _getLocationUpdates();
+  }
+
+  Future<void> _loadMapStyle() async {
+    _mapStyle = await rootBundle.loadString('assets/map_style.json');
   }
 
   @override
@@ -55,7 +59,6 @@ class MapViewState extends State<MapView> {
 
     return GoogleMap(
       onMapCreated: (GoogleMapController controller) {
-        _mapController = controller;
         widget.onMapCreated(controller); // Send controller to parent
       },
       initialCameraPosition: CameraPosition(target: cameraTarget, zoom: 13),
@@ -63,6 +66,7 @@ class MapViewState extends State<MapView> {
       myLocationButtonEnabled: true,
       zoomControlsEnabled: false,
       markers: allMarkers,
+      style: _mapStyle,
     );
   }
 
@@ -122,7 +126,6 @@ class MapViewState extends State<MapView> {
         setState(() {
           _currentLocation = newLocation;
         });
-        widget.onLocationChanged(newLocation); // Send location to parent
       }
     });
   }

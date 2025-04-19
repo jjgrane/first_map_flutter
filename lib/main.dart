@@ -27,3 +27,4 @@ class MyApp extends StatelessWidget {
 
 
 //./fix_flutter.sh
+// flutter run -d chrome --web-browser-flag "--disable-web-security"

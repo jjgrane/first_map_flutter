@@ -5,17 +5,21 @@ class PlaceInformation {
   final String placeId;
   final String name;
   final String? address;
+  final String? formattedAddress;
   final LatLng? location;
   final List<String>? mapsTags;
   final List<String>? extraTags;
+  final String? firstPhotoRef;
 
   PlaceInformation({
     required this.placeId,
     required this.name,
     this.address,
+    this.formattedAddress,
     this.location,
     this.mapsTags = const [],
     this.extraTags = const [],
+    this.firstPhotoRef,
   });
 
   // esta funcion sirve para actualizar atributos del objeto
@@ -23,17 +27,21 @@ class PlaceInformation {
     String? name,
     String? placeId,
     String? address,
+    String? formattedAddress,
     LatLng? location,
     List<String>? mapsTags,
     List<String>? extraTags,
+    String? firstPhotoRef,
   }) {
     return PlaceInformation(
       name: name ?? this.name,
       placeId: placeId ?? this.placeId,
       address: address ?? this.address,
+      formattedAddress: formattedAddress ?? this.formattedAddress,
       location: location ?? this.location,
       mapsTags: mapsTags ?? this.mapsTags,
       extraTags: extraTags ?? this.extraTags,
+      firstPhotoRef: firstPhotoRef ?? this.firstPhotoRef,
     );
   }
 
@@ -52,6 +60,7 @@ class PlaceInformation {
     return PlaceInformation(
       placeId: id,
       name: data['name'] ?? '',
+      firstPhotoRef: data['firstPhotoRef'],
       address: data['address'],
       location: LatLng(data['lat'], data['long']),
       mapsTags: List<String>.from(data['mapsTags'] ?? []),
@@ -63,6 +72,7 @@ class PlaceInformation {
     return {
       'name': name,
       'address': address,
+      'firstPhotoRef': firstPhotoRef,
       'lat': location?.latitude,
       'long': location?.longitude,
       'geo':

@@ -8,7 +8,7 @@ import 'package:first_maps_project/services/places_service.dart';
 import 'package:first_maps_project/widgets/place_information.dart';
 import 'package:first_maps_project/pages/place_details_page.dart';
 import 'package:first_maps_project/pages/map_page/place_preview.dart';
-import 'package:first_maps_project/pages/search_screen/place_search_screen.dart';
+import 'package:first_maps_project/pages/search_page/search_page.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -19,24 +19,26 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   GoogleMapController? _mapController;
-  LatLng? _currentLocation;
   Marker? _searchMarker;
   PlaceInformation? _selectedPlace;
+  String _currentMap = "My Personal Map";
+  String? _selectedPlaceName;
 
   final String _googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY']!;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final GlobalKey<MapViewState> _mapKey = GlobalKey<MapViewState>();
+  late final PlacesService _placesService;
 
+  @override
+  void initState() {
+    _placesService = PlacesService(_googleApiKey);
+
+  }
+  
   void _handleMapCreated(GoogleMapController controller) {
     setState(() {
       _mapController = controller;
-    });
-  }
-
-  void _handleLocationChanged(LatLng location) {
-    setState(() {
-      _currentLocation = location;
     });
   }
 
@@ -52,21 +54,20 @@ class _MapPageState extends State<MapPage> {
             MapView(
               key: _mapKey,
               onMapCreated: _handleMapCreated,
-              onLocationChanged: _handleLocationChanged,
               searchMarker: _searchMarker,
             ),
             //Add map gadgets
             if (_mapController != null) ...[
               // SEARCH BAR
               PlaceSearchBar(
-                displayText: _searchController.text,
+                displayText: _selectedPlaceName ?? _currentMap,
                 onTap: () async {
                   final cameraCenter = await _getCameraCenter();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
-                          (_) => PlaceSearchScreen(
+                          (_) => SearchPage(
                             apiKey: _googleApiKey,
                             cameraCenter: cameraCenter,
                             textController: _searchController,
@@ -98,11 +99,13 @@ class _MapPageState extends State<MapPage> {
                   },
                   onClose: () {
                     setState(() {
+                      _selectedPlaceName = null;
                       _selectedPlace = null;
                       _searchController.clear();
                       _searchMarker = null;
                     });
                   },
+                  placeService: _placesService,
                 ),
             ],
           ],
@@ -116,12 +119,10 @@ class _MapPageState extends State<MapPage> {
       Navigator.pop(context);
     }
 
-    final placesService = PlacesService(_googleApiKey);
-
     // Si no tenemos coordenadas, las pedimos -- OPTIMIZABLE, ESTO DEBERIA SALIR DE BASE DE DATOS.
     PlaceInformation? updatedPlace = place;
     if (place.location == null) {
-      updatedPlace = await placesService.getPlaceDetails(place.placeId, sessionToken);
+      updatedPlace = await _placesService.getPlaceDetails(place.placeId, sessionToken);
     }
 
     if (updatedPlace == null) {
@@ -146,7 +147,8 @@ class _MapPageState extends State<MapPage> {
         setState(() {
           _searchMarker = marker;
           _selectedPlace = updatedPlace;
-          _searchController.text = updatedPlace!.name;
+          _selectedPlaceName = updatedPlace!.name;
+          _searchController.text = _selectedPlaceName!;
         });
 
         _mapController!.animateCamera(CameraUpdate.newLatLngZoom(coords, 15));

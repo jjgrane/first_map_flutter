@@ -35,10 +35,15 @@ class PlacesService {
       final json = jsonDecode(response.body);
       final predictions = json['predictions'] as List;
       return predictions
-          .where((p) => p['description'] != null && p['place_id'] != null)
+          .where(
+            (p) =>
+                p['structured_formatting']?['main_text'] != null &&
+                p['place_id'] != null,
+          )
           .map(
             (p) => PlaceInformation(
-              name: p['description'],
+              name: p['structured_formatting']['main_text'],
+              formattedAddress: p['structured_formatting']['secondary_text'],
               placeId: p['place_id'],
             ),
           )
@@ -48,7 +53,10 @@ class PlacesService {
     }
   }
 
-  Future<PlaceInformation?> getPlaceDetails(String placeId, String? sessionToken) async {
+  Future<PlaceInformation?> getPlaceDetails(
+    String placeId,
+    String? sessionToken,
+  ) async {
     //https://developers.google.com/maps/documentation/places/web-service/details?hl=es-419
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=$apiKey',
@@ -60,14 +68,30 @@ class PlacesService {
       if (json['status'] == 'OK') {
         final result = json['result'];
         final location = result['geometry']['location'];
+        final photoReferences =
+            (result['photos'] as List?)
+                ?.map((photo) => photo['photo_reference'] as String)
+                .toList() ??
+            [];
+        final firstPhotoRef = photoReferences?.isNotEmpty == true ? photoReferences!.first : null;
+
         return PlaceInformation(
-          name: result['name'],        
+          name: result['name'],
           placeId: placeId,
           address: result['formatted_address'],
           location: LatLng(location['lat'], location['lng']),
+          firstPhotoRef: firstPhotoRef, 
         );
       }
     }
     return null;
   }
+
+String getPhotoUrl(String photoReference, {int maxWidth = 300}) {
+  return 'https://maps.googleapis.com/maps/api/place/photo'
+         '?maxwidth=$maxWidth'
+         '&photoreference=$photoReference'
+         '&key=$apiKey';
+}
+
 }
