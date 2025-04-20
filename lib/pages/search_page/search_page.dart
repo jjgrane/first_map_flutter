@@ -58,8 +58,7 @@ class SearchPageState extends State<SearchPage>
                 horizontal: 16,
                 vertical: 8,
               ), // separa del safe area
-              child: Expanded(
-                child: Container(
+              child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   height: 50,
                   decoration: BoxDecoration(
@@ -100,7 +99,6 @@ class SearchPageState extends State<SearchPage>
                       ),
                     ],
                   ),
-                ),
               ),
             ),
             SizedBox(height: 4),
@@ -230,7 +228,6 @@ class SearchPageState extends State<SearchPage>
 
   // Maneja los cambios de texto en el buscador
   void _onSearchChanged(String text) async {
-    if (!mounted) return;
     if (text.trim().isEmpty) {
       setState(() => _places.clear());
       return;

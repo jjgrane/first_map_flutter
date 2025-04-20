@@ -68,18 +68,22 @@ class PlacesService {
       if (json['status'] == 'OK') {
         final result = json['result'];
         final location = result['geometry']['location'];
-        final photoReferences =
-            (result['photos'] as List?)
-                ?.map((photo) => photo['photo_reference'] as String)
-                .toList() ??
-            [];
-        final firstPhotoRef = photoReferences?.isNotEmpty == true ? photoReferences!.first : null;
+        final rating = result['rating'];
+        final totalRatings = result['user_ratings_total'];
+        final website = result['website'];
+        final List? photos = result['photos'] as List?;
+        final String? firstPhotoRef = (photos != null && photos.isNotEmpty)
+            ? photos.first['photo_reference'] as String
+            : null;
 
         return PlaceInformation(
           name: result['name'],
           placeId: placeId,
           address: result['formatted_address'],
           location: LatLng(location['lat'], location['lng']),
+          rating: rating,
+          totalRatings: totalRatings,
+          website: website,
           firstPhotoRef: firstPhotoRef, 
         );
       }
@@ -88,6 +92,7 @@ class PlacesService {
   }
 
 String getPhotoUrl(String photoReference, {int maxWidth = 300}) {
+  
   return 'https://maps.googleapis.com/maps/api/place/photo'
          '?maxwidth=$maxWidth'
          '&photoreference=$photoReference'

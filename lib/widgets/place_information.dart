@@ -7,6 +7,9 @@ class PlaceInformation {
   final String? address;
   final String? formattedAddress;
   final LatLng? location;
+  final double? rating;
+  final int? totalRatings;
+  final String? website;
   final List<String>? mapsTags;
   final List<String>? extraTags;
   final String? firstPhotoRef;
@@ -17,6 +20,9 @@ class PlaceInformation {
     this.address,
     this.formattedAddress,
     this.location,
+    this.rating,
+    this.totalRatings,
+    this.website,
     this.mapsTags = const [],
     this.extraTags = const [],
     this.firstPhotoRef,
@@ -29,6 +35,9 @@ class PlaceInformation {
     String? address,
     String? formattedAddress,
     LatLng? location,
+    double? rating,
+    int? totalRatings,
+    String? website,
     List<String>? mapsTags,
     List<String>? extraTags,
     String? firstPhotoRef,
@@ -39,6 +48,9 @@ class PlaceInformation {
       address: address ?? this.address,
       formattedAddress: formattedAddress ?? this.formattedAddress,
       location: location ?? this.location,
+      rating: rating ?? this.rating,
+      totalRatings: totalRatings ?? this.totalRatings,
+      website: website ?? this.website,
       mapsTags: mapsTags ?? this.mapsTags,
       extraTags: extraTags ?? this.extraTags,
       firstPhotoRef: firstPhotoRef ?? this.firstPhotoRef,
@@ -51,7 +63,6 @@ class PlaceInformation {
     return Marker(
       markerId: MarkerId(placeId),
       position: location!,
-      infoWindow: InfoWindow(title: name, snippet: address),
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
     );
   }
@@ -63,11 +74,15 @@ class PlaceInformation {
       firstPhotoRef: data['firstPhotoRef'],
       address: data['address'],
       location: LatLng(data['lat'], data['long']),
+      rating: data['rating'] != null ? (data['rating'] as num).toDouble() : null,
+      totalRatings: data['totalRatings'] != null ? (data['totalRatings'] as num).toInt() : null,
+      website: data['website'],
       mapsTags: List<String>.from(data['mapsTags'] ?? []),
       extraTags: List<String>.from(data['extraTags'] ?? []),
       // otros campos...
     );
   }
+
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
@@ -79,6 +94,9 @@ class PlaceInformation {
           location != null
               ? GeoPoint(location!.latitude, location!.longitude)
               : null,
+      'rating': rating,
+      'totalRatings': totalRatings,
+      'website': website,
       'mapsTags': mapsTags ?? [],
       'extraTags': extraTags ?? [],
       'createdAt': DateTime.now().toIso8601String(),

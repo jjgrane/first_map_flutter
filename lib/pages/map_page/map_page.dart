@@ -33,9 +33,8 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     _placesService = PlacesService(_googleApiKey);
-
   }
-  
+
   void _handleMapCreated(GoogleMapController controller) {
     setState(() {
       _mapController = controller;
@@ -44,17 +43,14 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        _searchFocusNode.unfocus(); // 👈 quita el foco del teclado
-      },
-      child: Scaffold(
+    return Scaffold(
         body: Stack(
           children: [
             MapView(
               key: _mapKey,
               onMapCreated: _handleMapCreated,
               searchMarker: _searchMarker,
+              onPlaceSelected: _handlePlaceTap,
             ),
             //Add map gadgets
             if (_mapController != null) ...[
@@ -86,35 +82,48 @@ class _MapPageState extends State<MapPage> {
                 split: 10,
               ),
               if (_selectedPlace != null)
-                PlacePreview(
-                  place: _selectedPlace!,
-                  onExpand: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => PlaceDetailsPage(place: _selectedPlace!, mapViewKey: _mapKey,),
-                      ),
-                    );
-                  },
-                  onClose: () {
-                    setState(() {
-                      _selectedPlaceName = null;
-                      _selectedPlace = null;
-                      _searchController.clear();
-                      _searchMarker = null;
-                    });
-                  },
-                  placeService: _placesService,
+                Positioned(
+                  bottom: 24,
+                  left: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => PlaceDetailsPage(
+                                place: _selectedPlace!,
+                                mapViewKey: _mapKey,
+                              ),
+                        ),
+                      );
+                    },
+                    child: PlacePreview(
+                      place: _selectedPlace!,
+                      onClose: () {
+                        setState(() {
+                          _selectedPlaceName = null;
+                          _selectedPlace = null;
+                          _searchController.clear();
+                          _searchMarker = null;
+                        });
+                      },
+                      placeService: _placesService,
+                    ),
+                  ),
                 ),
             ],
           ],
         ),
-      ),
     );
   }
 
-  Future<void> _handlePlaceSelected(PlaceInformation place, String? sessionToken) async {
+  Future<void> _handlePlaceSelected(
+    PlaceInformation place,
+    String? sessionToken,
+  ) async {
     if (context.mounted) {
       Navigator.pop(context);
     }
@@ -122,7 +131,10 @@ class _MapPageState extends State<MapPage> {
     // Si no tenemos coordenadas, las pedimos -- OPTIMIZABLE, ESTO DEBERIA SALIR DE BASE DE DATOS.
     PlaceInformation? updatedPlace = place;
     if (place.location == null) {
-      updatedPlace = await _placesService.getPlaceDetails(place.placeId, sessionToken);
+      updatedPlace = await _placesService.getPlaceDetails(
+        place.placeId,
+        sessionToken,
+      );
     }
 
     if (updatedPlace == null) {
@@ -162,5 +174,13 @@ class _MapPageState extends State<MapPage> {
       (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
       (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
     );
+  }
+
+  void _handlePlaceTap(PlaceInformation place) {
+    print("ITEM TAPPED");
+    setState(() {
+      _selectedPlace = place;
+      _selectedPlaceName = place.name;
+    });
   }
 }

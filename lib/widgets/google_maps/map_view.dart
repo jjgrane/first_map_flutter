@@ -7,11 +7,13 @@ import 'package:flutter/services.dart' show rootBundle;
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
+  final void Function(PlaceInformation) onPlaceSelected;
   final Marker? searchMarker;
 
   const MapView({
     super.key,
     required this.onMapCreated,
+    required this.onPlaceSelected,
     this.searchMarker,
   });
 
@@ -88,7 +90,7 @@ class MapViewState extends State<MapView> {
                 return Marker(
                   markerId: MarkerId(place.placeId),
                   position: place.location!,
-                  infoWindow: InfoWindow(title: place.name),
+                  onTap: () => widget.onPlaceSelected(place),
                 );
               } catch (e) {
                 debugPrint('❌ Error parsing marker ${doc.id}: $e');
