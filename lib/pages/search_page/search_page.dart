@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:first_maps_project/widgets/place_information.dart';
+import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/services/places_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:uuid/uuid.dart';
@@ -206,7 +206,7 @@ class SearchPageState extends State<SearchPage>
                         ),
                       ),
                       Text(
-                        place.formattedAddress ?? '',
+                        place.address ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

@@ -5,103 +5,100 @@ class PlaceInformation {
   final String placeId;
   final String name;
   final String? address;
-  final String? formattedAddress;
   final LatLng? location;
   final double? rating;
   final int? totalRatings;
   final String? website;
-  final List<String>? mapsTags;
-  final List<String>? extraTags;
+  final List<String> mapsTags;
   final String? firstPhotoRef;
 
   PlaceInformation({
     required this.placeId,
     required this.name,
     this.address,
-    this.formattedAddress,
     this.location,
     this.rating,
     this.totalRatings,
     this.website,
     this.mapsTags = const [],
-    this.extraTags = const [],
     this.firstPhotoRef,
   });
 
-  // esta funcion sirve para actualizar atributos del objeto
+  // Create a copy with updated fields.
   PlaceInformation copyWith({
     String? name,
-    String? placeId,
     String? address,
-    String? formattedAddress,
     LatLng? location,
     double? rating,
     int? totalRatings,
     String? website,
     List<String>? mapsTags,
-    List<String>? extraTags,
     String? firstPhotoRef,
   }) {
     return PlaceInformation(
+      placeId: placeId,
       name: name ?? this.name,
-      placeId: placeId ?? this.placeId,
       address: address ?? this.address,
-      formattedAddress: formattedAddress ?? this.formattedAddress,
       location: location ?? this.location,
       rating: rating ?? this.rating,
       totalRatings: totalRatings ?? this.totalRatings,
       website: website ?? this.website,
       mapsTags: mapsTags ?? this.mapsTags,
-      extraTags: extraTags ?? this.extraTags,
       firstPhotoRef: firstPhotoRef ?? this.firstPhotoRef,
     );
   }
 
-  Marker? toMarker() {
-    if (location == null) return null;
-
-    return Marker(
-      markerId: MarkerId(placeId),
-      position: location!,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-    );
-  }
-
   factory PlaceInformation.fromFirestore(Map<String, dynamic> data, String id) {
+    GeoPoint? gp = data['geo'] as GeoPoint?;
+    LatLng? loc;
+    if (gp != null) {
+      loc = LatLng(gp.latitude, gp.longitude);
+    } else if (data['lat'] != null && data['long'] != null) {
+      loc = LatLng(
+        (data['lat'] as num).toDouble(),
+        (data['long'] as num).toDouble(),
+      );
+    }
     return PlaceInformation(
       placeId: id,
       name: data['name'] ?? '',
-      firstPhotoRef: data['firstPhotoRef'],
       address: data['address'],
-      location: LatLng(data['lat'], data['long']),
+      location: loc,
       rating: data['rating'] != null ? (data['rating'] as num).toDouble() : null,
       totalRatings: data['totalRatings'] != null ? (data['totalRatings'] as num).toInt() : null,
       website: data['website'],
       mapsTags: List<String>.from(data['mapsTags'] ?? []),
-      extraTags: List<String>.from(data['extraTags'] ?? []),
-      // otros campos...
+      firstPhotoRef: data['firstPhotoRef'],
     );
   }
 
+  /// Serialize this object to Firestore data for the `place_details` collection.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'address': address,
-      'firstPhotoRef': firstPhotoRef,
+      'geo': location != null
+          ? GeoPoint(location!.latitude, location!.longitude)
+          : null,
       'lat': location?.latitude,
       'long': location?.longitude,
-      'geo':
-          location != null
-              ? GeoPoint(location!.latitude, location!.longitude)
-              : null,
       'rating': rating,
       'totalRatings': totalRatings,
       'website': website,
-      'mapsTags': mapsTags ?? [],
-      'extraTags': extraTags ?? [],
-      'createdAt': DateTime.now().toIso8601String(),
-      'addedBy':
-          'anonymous', // o podés reemplazarlo con el UID de Firebase Auth si usás auth
+      'first_photo_ref': firstPhotoRef,
+      'maps_tags': mapsTags,
+      'created_at': FieldValue.serverTimestamp(),
     };
+  }
+
+  /// Convert this instance into a Google Maps Marker.
+  Marker? toMarker() {
+    if (location == null) return null;
+    return Marker(
+      markerId: MarkerId(placeId),
+      position: location!,
+      icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueAzure),      
+    );
   }
 }

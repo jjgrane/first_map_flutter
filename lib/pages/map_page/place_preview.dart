@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:first_maps_project/widgets/place_information.dart';
+import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/services/places_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 class PlacePreview extends StatelessWidget {
   final PlaceInformation place;
   final VoidCallback onClose;
   final PlacesService placeService;
+
+  // Reduced container height
+  static const double _containerHeight = 150;
+  static const double _imageSize = 100;
 
   const PlacePreview({
     super.key,
@@ -20,48 +23,53 @@ class PlacePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int maxPhotoWidth = (MediaQuery.of(context).size.width / 3).toInt();
-    final double maxPhotoHeight = (MediaQuery.of(context).size.height / 4);
-
-    return Material(
+    return SizedBox(
+      height: _containerHeight,
+      child: Material(
         elevation: 10,
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              padding: const EdgeInsets.all(12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // PLACE NAME
+                        // PLACE NAME (2 lines)
                         Text(
                           place.name,
-                          style: TextStyle(
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             fontFamily: 'Marine',
                             fontWeight: FontWeight.w400,
                             fontSize: 16,
                             color: Colors.black,
                           ),
                         ),
-                        //const SizedBox(height: 3),
-                        // DISTANCE TO LOCATION
+                        // Tightened spacing to zero
+                        const SizedBox(height: 0),
+                        // DISTANCE TO LOCATION (1 line)
                         Text(
                           "DISTANCE TO LOCATION",
-                          style: TextStyle(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             fontFamily: 'HalyardDisplay',
                             fontWeight: FontWeight.w300,
                             fontSize: 14,
                             color: Colors.black87,
                           ),
                         ),
-                        // Place Rating
-                        if (place.rating != null)
+                        const SizedBox(height: 2),
+                        // Place Rating (1 line)
+                        if (place.rating != null) ...[
                           Row(
                             children: [
                               SvgPicture.asset(
@@ -69,51 +77,56 @@ class PlacePreview extends StatelessWidget {
                                 width: 14,
                                 height: 14,
                               ),
-                              const SizedBox(width: 8),
-                              RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontFamily: 'HalyardDisplay',
-                                    fontWeight: FontWeight.w300,
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: place.rating!.toStringAsFixed(1),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: RichText(
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  text: TextSpan(
+                                    style: const TextStyle(
+                                      fontFamily: 'HalyardDisplay',
+                                      fontWeight: FontWeight.w300,
+                                      fontSize: 14,
+                                      color: Colors.black87,
                                     ),
-                                    WidgetSpan(
-                                      alignment: PlaceholderAlignment.middle,
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                        ),
-                                        child: Icon(
-                                          Icons.star,
-                                          size: 14,
-                                          color: Colors.black,
+                                    children: [
+                                      TextSpan(
+                                        text: place.rating!.toStringAsFixed(1),
+                                      ),
+                                      WidgetSpan(
+                                        alignment: PlaceholderAlignment.middle,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                          child: Icon(
+                                            Icons.star,
+                                            size: 14,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    TextSpan(
-                                      text:
-                                          '(${NumberFormat.decimalPattern(Localizations.localeOf(context).toString()).format(place.totalRatings!.toInt())})',
-                                    ),
-                                  ],
+                                      TextSpan(
+                                        text: '(${NumberFormat.decimalPattern(Localizations.localeOf(context).toString()).format(place.totalRatings!.toInt())})',
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        // OPEN / CLOSED
+                          const SizedBox(height: 2),
+                        ],
+                        // OPEN / CLOSED (1 line)
                         RichText(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           text: TextSpan(
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'HalyardDisplay',
                               fontWeight: FontWeight.w300,
                               fontSize: 14,
                               color: Colors.black87,
                             ),
-                            children: [
+                            children: const [
                               TextSpan(
                                 text: 'Open',
                                 style: TextStyle(
@@ -136,25 +149,18 @@ class PlacePreview extends StatelessWidget {
                             ],
                           ),
                         ),
-
-                        SizedBox(height: 8),
-                        
+                        const SizedBox(height: 4),
                         // BUTTONS
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
                               child: _actionButton("Add", Icons.add, () {}),
                             ),
                             const SizedBox(width: 4),
                             Expanded(
-                              child: _actionButton(
-                                "Go",
-                                Icons.directions,
-                                () {},
-                              ),
+                              child: _actionButton("Go", Icons.directions, () {}),
                             ),
-                            if(place.website != null)...[
+                            if (place.website != null) ...[
                               const SizedBox(width: 4),
                               Expanded(
                                 child: _actionButton(
@@ -163,51 +169,44 @@ class PlacePreview extends StatelessWidget {
                                   () => _launchWebsite(place.website!),
                                 ),
                               ),
-                              ]
+                            ],
                           ],
                         ),
                       ],
                     ),
                   ),
-
-                  // PLACE PHOTO
-                  if (place.firstPhotoRef != null) ...[
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width / 3,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          placeService.getPhotoUrl(
-                            place.firstPhotoRef!,
-                            maxWidth: maxPhotoWidth,
+                  const SizedBox(width: 16),
+                  // PLACE PHOTO (square)
+                  if (place.firstPhotoRef != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        placeService.getPhotoUrl(
+                          place.firstPhotoRef!,
+                          maxWidth: _imageSize.toInt(),
+                        ),
+                        width: _imageSize,
+                        height: _imageSize,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: _imageSize,
+                          height: _imageSize,
+                          color: Colors.grey[200],
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.grey,
                           ),
-                          fit: BoxFit.fitHeight,
-                          width: maxPhotoWidth.toDouble(),   
-                          height: maxPhotoHeight,                       
-                          errorBuilder:
-                              (_, __, ___) => Container(
-                                width: 80,
-                                height: 80,
-                                color: Colors.grey[200],
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                ),
-                              ),
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
-            // ❌ Botón de cerrar
+            // CLOSE BUTTON
             Positioned(
-              top: -14,
-              right: -14,
+              top: -8,
+              right: -8,
               child: IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 color: Colors.grey,
@@ -217,18 +216,19 @@ class PlacePreview extends StatelessWidget {
             ),
           ],
         ),
-      );
+      ),
+    );
   }
 
-
-// Action Buttons options
+  // Action Buttons options
   Widget _actionButton(String label, IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Color(0xFF134264),
+          color: const Color(0xFF134264),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[300]!),
         ),
@@ -236,12 +236,13 @@ class PlacePreview extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+            const SizedBox(width: 2),
+            Flexible(
               child: Text(
                 label,
-                style: TextStyle(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
                   fontFamily: 'HalyardDisplay',
                   fontWeight: FontWeight.w400,
                   fontSize: 13,
@@ -255,13 +256,11 @@ class PlacePreview extends StatelessWidget {
     );
   }
 
-void _launchWebsite(String url) async {
-  print(url);
-  if (await canLaunchUrl(Uri.parse(url))) {
-    await launchUrl(Uri.parse(url));
-  } else {
-    throw 'Could not launch $url';
+  void _launchWebsite(String url) async {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    } else {
+      throw 'Could not launch $url';
+    }
   }
-}
-
 }
