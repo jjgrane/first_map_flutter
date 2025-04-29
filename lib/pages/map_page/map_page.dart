@@ -165,9 +165,9 @@ class _MapPageState extends State<MapPage> {
   }
 
   // Handler for tapping the maps button: open map selection view
-  void _onMapsButtonTap() {
+  Future<void> _onMapsButtonTap() async{
     if (!mounted) return;
-    Navigator.push(
+    final selected = await Navigator.push<MapInfo>(
       context,
       MaterialPageRoute(
         builder:
@@ -177,6 +177,13 @@ class _MapPageState extends State<MapPage> {
             ),
       ),
     );
+    if (selected != null){
+      setState(() {
+        _currentMapId = selected.id;
+        _currentMapName = selected.name;
+      });
+      _mapKey.currentState?.reloadMarkers(selected.id!);
+    }
   }
 
   // Positioned preview bar at bottom when a place is selected
@@ -292,7 +299,7 @@ class _MapPageState extends State<MapPage> {
       (m) => m.name == 'default',
       orElse: () => MapInfo(id: '', name: '', owner: ''),
     );
-    if (def.id.isEmpty) return;
+    if (def.id!.isEmpty) return;
     setState(() {
       _currentMapId = def.id;
       _currentMapName = def.name;
@@ -305,6 +312,7 @@ class _MapPageState extends State<MapPage> {
       _selectedPlace = place;
       _selectedPlaceName = place.name;
       _selectedMarkerId = _mapKey.currentState?.getMarkerIdForPlace(place.placeId);
+      _searchMarker = null;
     });
   }
 }

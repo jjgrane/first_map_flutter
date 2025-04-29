@@ -7,13 +7,15 @@ class FirebaseMapsService {
   final CollectionReference _mapsRef =
       FirebaseFirestore.instance.collection('maps');
 
-  /// Adds a new map with the given [mapInfo].
-  /// Uses [mapInfo.id] as the document ID and records a server timestamp.
-  Future<void> addMap(MapInfo mapInfo) async {
-    await _mapsRef.doc(mapInfo.id).set({
+  /// Adds a new map with the given [mapInfo], letting Firestore generate the ID,
+  /// and returns the new MapInfo (with its assigned id).
+  Future<MapInfo> addMap(MapInfo mapInfo) async {
+    final docRef = await _mapsRef.add({
       ...mapInfo.toFirestore(),
       'created_at': FieldValue.serverTimestamp(),
     });
+    // Rebuild a MapInfo with the new ID
+    return MapInfo(id: docRef.id, name: mapInfo.name, owner: mapInfo.owner);
   }
 
   /// Updates an existing map (merges fields).

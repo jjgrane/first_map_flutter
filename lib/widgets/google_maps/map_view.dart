@@ -54,7 +54,7 @@ class MapViewState extends State<MapView> {
   void initState() {
     super.initState();
     _loadMapStyle();
-    _loadMarkersFromFirestore();
+    _loadMarkersFromFirestore(widget.currentMapId);
     _getLocationUpdates();
   }
 
@@ -93,10 +93,10 @@ class MapViewState extends State<MapView> {
     );
   }
 
-  Future<void> _loadMarkersFromFirestore() async {
+  Future<void> _loadMarkersFromFirestore(String mapId) async {
     // 1. fetch marker records for this map
     final markerList = await _markersService.getMarkersByMapId(
-      widget.currentMapId,
+      mapId,
     );
     // 2. extract details IDs
     final detailIds = markerList.map((m) => m.detailsId).toSet().toList();
@@ -132,7 +132,7 @@ class MapViewState extends State<MapView> {
     });
     // 5. Build Google Map Marker widgets via the model's toMarker(), filtering nulls
     final newMarkers =
-        enrichedMarkers.map((m) => m.toMarker()).whereType<Marker>().toSet();
+        enrichedMarkers.map((m) => m.toMarker(widget.onPlaceSelected)).whereType<Marker>().toSet();
     // Use helper to update markers
     _updateMarkers(newMarkers);
   }
@@ -148,7 +148,7 @@ class MapViewState extends State<MapView> {
 
   void addMarker(MapMarker mapMarker) {
     setState(() {
-      _markers.add(mapMarker.toMarker()!);
+      _markers.add(mapMarker.toMarker(widget.onPlaceSelected)!);
       _markerModels.add(mapMarker);
       _detailsList.add(mapMarker.information!);
     });
@@ -201,7 +201,7 @@ class MapViewState extends State<MapView> {
     });
   }
 
-  Future<void> reloadMarkers() async {
-    await _loadMarkersFromFirestore();
+  Future<void> reloadMarkers(String mapId) async {
+    await _loadMarkersFromFirestore(mapId);
   }
 }

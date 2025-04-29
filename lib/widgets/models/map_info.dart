@@ -1,14 +1,14 @@
 /// Model representing a Map record in Firestore (collection 'maps').
 class MapInfo {
   /// Firestore document ID
-  final String id;
+  final String? id;
   final String name;
   final String owner;
 
   MapInfo({
-    required this.id,
+    this.id,
     required this.name,
-    required this.owner,
+    this.owner = 'Anonymous',
   });
 
   /// Deserialize Firestore document into MapInfo

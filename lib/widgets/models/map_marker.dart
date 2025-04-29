@@ -15,12 +15,13 @@ class MapMarker {
     this.information,
   });
 
-  Marker? toMarker() {
+  Marker? toMarker(void Function(PlaceInformation) onPlaceSelected) {
     if (markerId == null || information?.location == null) return null;
     return Marker(
       markerId: MarkerId(markerId!),
       position: information!.location!,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      onTap: () => onPlaceSelected(information!),
     );
   }
 

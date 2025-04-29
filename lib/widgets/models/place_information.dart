@@ -68,7 +68,7 @@ class PlaceInformation {
       totalRatings: data['totalRatings'] != null ? (data['totalRatings'] as num).toInt() : null,
       website: data['website'],
       mapsTags: List<String>.from(data['mapsTags'] ?? []),
-      firstPhotoRef: data['firstPhotoRef'],
+      firstPhotoRef: data['first_photo_ref'],
     );
   }
 

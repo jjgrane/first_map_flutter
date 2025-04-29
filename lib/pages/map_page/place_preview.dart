@@ -23,6 +23,7 @@ class PlacePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print(place.firstPhotoRef);
     return SizedBox(
       height: _containerHeight,
       child: Material(
