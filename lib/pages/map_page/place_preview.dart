@@ -1,30 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
+import 'package:first_maps_project/widgets/models/map_marker.dart';
+import 'package:first_maps_project/pages/map_page/groups_view_page.dart';
 import 'package:first_maps_project/services/places_service.dart';
+import 'package:first_maps_project/providers/map_providers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class PlacePreview extends StatelessWidget {
-  final PlaceInformation place;
-  final VoidCallback onClose;
+class PlacePreview extends ConsumerStatefulWidget {
   final PlacesService placeService;
-
-  // Reduced container height
-  static const double _containerHeight = 150;
-  static const double _imageSize = 100;
 
   const PlacePreview({
     super.key,
-    required this.place,
-    required this.onClose,
     required this.placeService,
   });
 
   @override
+  ConsumerState<PlacePreview> createState() => _PlacePreviewState();
+}
+
+class _PlacePreviewState extends ConsumerState<PlacePreview> with SingleTickerProviderStateMixin {
+  // Reduced container height
+  static const double _containerHeight = 150;
+  static const double _imageSize = 100;
+  
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    print(place.firstPhotoRef);
-    return SizedBox(
+    final place = ref.watch(selectedPlaceProvider);
+    
+    // Manejar la animación basada en si hay un lugar seleccionado
+    if (place == null) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+
+    // Observar el marcador actual
+    final currentMarker = ref.watch(selectedMarkerProvider);
+    final isSaved = currentMarker?.markerId != null;
+    final savedIcon = currentMarker?.pinIcon;
+
+    return SizeTransition(
+      sizeFactor: _animation,
+      axisAlignment: -1,
+      child: SizedBox(
       height: _containerHeight,
       child: Material(
         elevation: 10,
@@ -32,7 +75,7 @@ class PlacePreview extends StatelessWidget {
         color: Colors.white,
         child: Stack(
           children: [
-            Padding(
+              if (place != null) Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -42,10 +85,9 @@ class PlacePreview extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // PLACE NAME (2 lines)
                         Text(
-                          place.name,
-                          maxLines: 2,
+                            place.name,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontFamily: 'Marine',
@@ -54,9 +96,7 @@ class PlacePreview extends StatelessWidget {
                             color: Colors.black,
                           ),
                         ),
-                        // Tightened spacing to zero
                         const SizedBox(height: 0),
-                        // DISTANCE TO LOCATION (1 line)
                         Text(
                           "DISTANCE TO LOCATION",
                           maxLines: 1,
@@ -69,8 +109,7 @@ class PlacePreview extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        // Place Rating (1 line)
-                        if (place.rating != null) ...[
+                          if (place.rating != null) ...[
                           Row(
                             children: [
                               SvgPicture.asset(
@@ -92,12 +131,12 @@ class PlacePreview extends StatelessWidget {
                                     ),
                                     children: [
                                       TextSpan(
-                                        text: place.rating!.toStringAsFixed(1),
+                                          text: place.rating!.toStringAsFixed(1),
                                       ),
-                                      WidgetSpan(
+                                        const WidgetSpan(
                                         alignment: PlaceholderAlignment.middle,
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            padding: EdgeInsets.symmetric(horizontal: 4),
                                           child: Icon(
                                             Icons.star,
                                             size: 14,
@@ -106,7 +145,7 @@ class PlacePreview extends StatelessWidget {
                                         ),
                                       ),
                                       TextSpan(
-                                        text: '(${NumberFormat.decimalPattern(Localizations.localeOf(context).toString()).format(place.totalRatings!.toInt())})',
+                                          text: '(${NumberFormat.decimalPattern(Localizations.localeOf(context).toString()).format(place.totalRatings!.toInt())})',
                                       ),
                                     ],
                                   ),
@@ -116,18 +155,17 @@ class PlacePreview extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                         ],
-                        // OPEN / CLOSED (1 line)
                         RichText(
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          text: TextSpan(
-                            style: const TextStyle(
+                            text: const TextSpan(
+                              style: TextStyle(
                               fontFamily: 'HalyardDisplay',
                               fontWeight: FontWeight.w300,
                               fontSize: 14,
                               color: Colors.black87,
                             ),
-                            children: const [
+                              children: [
                               TextSpan(
                                 text: 'Open',
                                 style: TextStyle(
@@ -151,25 +189,35 @@ class PlacePreview extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // BUTTONS
                         Row(
                           children: [
                             Expanded(
-                              child: _actionButton("Add", Icons.add, () {}),
+                              child: _actionButton(
+                                isSaved ? (savedIcon ?? '') : 'Add',
+                                isSaved ? null : Icons.add,
+                                  () => _onAddTapped(currentMarker),
+                                  backgroundColor: isSaved 
+                                        ? Colors.orange
+                                        : const Color(0xFF134264),
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Expanded(
-                              child: _actionButton("Go", Icons.directions, () {}),
+                              child: _actionButton(
+                                "Go",
+                                Icons.directions,
+                                () {},
+                              ),
                             ),
-                            if (place.website != null) ...[
+                              if (place.website != null) ...[
                               const SizedBox(width: 4),
                               Expanded(
                                 child: _actionButton(
                                   "Website",
                                   Icons.language,
-                                  () => _launchWebsite(place.website!),
+                                    () => _launchWebsite(place.website!),
+                                  ),
                                 ),
-                              ),
                             ],
                           ],
                         ),
@@ -177,67 +225,90 @@ class PlacePreview extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // PLACE PHOTO (square)
-                  if (place.firstPhotoRef != null)
+                    if (place.firstPhotoRef != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        placeService.getPhotoUrl(
-                          place.firstPhotoRef!,
+                          widget.placeService.getPhotoUrl(
+                            place.firstPhotoRef!,
                           maxWidth: _imageSize.toInt(),
                         ),
                         width: _imageSize,
                         height: _imageSize,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: _imageSize,
-                          height: _imageSize,
-                          color: Colors.grey[200],
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.grey,
-                          ),
-                        ),
+                          errorBuilder: (_, __, ___) => Container(
+                              width: _imageSize,
+                              height: _imageSize,
+                              color: Colors.grey[200],
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                              ),
+                            ),
                       ),
                     ),
                 ],
               ),
             ),
-            // CLOSE BUTTON
             Positioned(
               top: -8,
               right: -8,
               child: IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 color: Colors.grey,
-                onPressed: onClose,
+                  onPressed: () => ref.read(selectedPlaceProvider.notifier).clear(),
                 splashRadius: 20,
               ),
             ),
           ],
+          ),
         ),
       ),
     );
   }
 
-  // Action Buttons options
-  Widget _actionButton(String label, IconData icon, VoidCallback onTap) {
+  Future<void> _onAddTapped(MapMarker? currentMarker) async {
+    final result = await Navigator.push<MapMarker?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupsViewPage(currentMarker: currentMarker),
+      ),
+    );
+    
+    if (result != null) {
+      // Update the marker in the state
+      if (result.markerId != null) {
+        await ref.read(markersStateProvider.notifier).updateMarker(result);
+      } else {
+        await ref.read(markersStateProvider.notifier).addMarker(result);
+      }
+    }
+  }
+
+  Widget _actionButton(
+    String label,
+    IconData? icon,
+    VoidCallback onTap, {
+    Color backgroundColor = const Color(0xFF134264),
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFF134264),
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[300]!),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 2),
+            if (icon != null)
+              Icon(icon, size: 14, color: Colors.white),
+            if (icon != null && label != '')
+              const SizedBox(width: 2),
             Flexible(
               child: Text(
                 label,

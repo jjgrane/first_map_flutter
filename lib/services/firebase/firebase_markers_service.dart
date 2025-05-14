@@ -29,10 +29,11 @@ class FirebaseMarkersService {
   /// Retrieves all markers
   Future<List<MapMarker>> getAllMarkers() async {
     final snapshot = await _markersRef.get();
-    return snapshot.docs.map((doc) {
+    final futures = snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      return MapMarker.fromFirestore(data, doc.id);
-    }).toList();
+      return MapMarker.fromFirestoreWithDetails(data, doc.id);
+    });
+    return Future.wait(futures);
   }
 
   /// Retrieves a single MapMarker by its ID, or null if not found
@@ -40,18 +41,33 @@ class FirebaseMarkersService {
     final doc = await _markersRef.doc(markerId).get();
     if (!doc.exists) return null;
     final data = doc.data() as Map<String, dynamic>;
-    return MapMarker.fromFirestore(data, doc.id);
+    return MapMarker.fromFirestoreWithDetails(data, doc.id);
   }
 
   /// Retrieves all markers associated with a given mapId
   Future<List<MapMarker>> getMarkersByMapId(String mapId) async {
-    final snapshot = await _markersRef
-        .where('map_id', isEqualTo: mapId)
-        .get();
-    return snapshot.docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      return MapMarker.fromFirestore(data, doc.id);
-    }).toList();
+    print('FirebaseMarkersService - Requesting markers for mapId: $mapId');
+    
+    try {
+      final snapshot = await _markersRef
+          .where('map_id', isEqualTo: mapId)
+          .get();
+      
+      print('FirebaseMarkersService - Received ${snapshot.docs.length} markers from Firebase');
+    
+      final futures = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        print('FirebaseMarkersService - Converting marker: ${doc.id} with data: $data');
+        return MapMarker.fromFirestoreWithDetails(data, doc.id);
+      });
+
+      final markers = await Future.wait(futures);
+      print('FirebaseMarkersService - Successfully converted ${markers.length} markers');
+      return markers;
+    } catch (error) {
+      print('FirebaseMarkersService - Error fetching markers: $error');
+      rethrow;
+    }
   }
 
   Future<void> updateMarker(MapMarker marker) async {
@@ -64,4 +80,4 @@ class FirebaseMarkersService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
-}
+} 

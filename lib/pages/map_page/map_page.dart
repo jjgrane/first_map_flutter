@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/pages/map_page/place_search_bar.dart';
 import 'package:first_maps_project/services/firebase_maps_service.dart';
@@ -10,7 +11,8 @@ import 'package:first_maps_project/widgets/google_maps/map_view.dart';
 import 'package:first_maps_project/pages/place_details_page.dart';
 import 'package:first_maps_project/pages/map_page/place_preview.dart';
 import 'package:first_maps_project/pages/search_page/search_page.dart';
-import 'package:first_maps_project/pages/map_page/map_selection_page.dart'; // import map selection view
+import 'package:first_maps_project/pages/map_page/map_selection_page.dart';
+import 'package:first_maps_project/providers/map_providers.dart';
 
 // Main page displaying the Google Map and related overlays
 class MapPage extends StatefulWidget {
@@ -21,37 +23,26 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  // Google Map controller reference
-  GoogleMapController? _mapController;
-  String? _selectedMarkerId;
-
-  // Marker shown when searching for a place
-  Marker? _searchMarker;
-
-  // Currently selected place information
-  PlaceInformation? _selectedPlace;
-
-  final FirebaseMapsService _mapsService = FirebaseMapsService();
-
-  // Firestore ID and name of the default map
-  String? _currentMapId;
-  String? _currentMapName;
-
-  // Name of the selected place to display in search bar
-  String? _selectedPlaceName;
-
-  // Google Maps API key loaded from environment
-  final String _googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY']!;
-
-  // Controller and focus node for search text input
+  // Keys and Controllers
+  final GlobalKey<MapViewState> _mapKey = GlobalKey<MapViewState>();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  GoogleMapController? _mapController;
 
-  // Key to access MapView state for reloading markers
-  final GlobalKey<MapViewState> _mapKey = GlobalKey<MapViewState>();
-
-  // Service to fetch place details from Google Places API
+  // Services
+  final FirebaseMapsService _mapsService = FirebaseMapsService();
   late final PlacesService _placesService;
+
+  // Map State
+  String? _currentMapId;
+  String? _currentMapName;
+  String? _selectedPlaceName;
+
+  // UI State
+  final ValueNotifier<bool> _isPreviewVisible = ValueNotifier<bool>(false);
+
+  // Configuration
+  final String _googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY']!;
 
   @override
   void initState() {
@@ -66,15 +57,12 @@ class _MapPageState extends State<MapPage> {
     // Clean up controllers to avoid memory leaks
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _isPreviewVisible.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading screen until default map data is fetched
-    if (_currentMapId == null) {
-      return _buildLoading();
-    }
     // Build main scaffold with map and overlays
     return Scaffold(body: _buildMapStack());
   }
@@ -91,7 +79,7 @@ class _MapPageState extends State<MapPage> {
         _buildMapView(),
         _buildSearchBar(),
         _buildMapsButton(),
-        if (_selectedPlace != null) _buildPlacePreviewPositioned(),
+        _buildPlacePreviewPositioned(),
       ],
     );
   }
@@ -100,10 +88,8 @@ class _MapPageState extends State<MapPage> {
   Widget _buildMapView() {
     return MapView(
       key: _mapKey,
-      currentMapId: _currentMapId!,
       onMapCreated: _handleMapCreated,
       onPlaceSelected: _handlePlaceTap,
-      selectedMarker: _searchMarker,
     );
   }
 
@@ -118,13 +104,12 @@ class _MapPageState extends State<MapPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder:
-                (_) => SearchPage(
-                  apiKey: _googleApiKey,
-                  cameraCenter: cameraCenter,
-                  textController: _searchController,
-                  onPlaceSelected: _handlePlaceSelected,
-                ),
+            builder: (_) => SearchPage(
+              apiKey: _googleApiKey,
+              cameraCenter: cameraCenter,
+              textController: _searchController,
+              onPlaceSelected: _handlePlaceSelected,
+            ),
           ),
         );
       },
@@ -133,13 +118,20 @@ class _MapPageState extends State<MapPage> {
 
   // Circular maps button positioned at the bottom, adjusts if preview is visible
   Widget _buildMapsButton() {
-    // Base margin from bottom
-    final double baseMargin = 40;
-    // Height of preview slider + its bottom margin (24 + 140)
-    final double previewOffset = _selectedPlace != null ? (24 + 140) : 0;
-    return Positioned(
-      bottom: baseMargin + previewOffset,
-      right: 10,
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isPreviewVisible,
+      builder: (context, isVisible, child) {
+        // Base margin from bottom
+        final double baseMargin = 40;
+        // Height of preview slider + its bottom margin (24 + 140)
+        final double previewOffset = isVisible ? (24 + 140) : 0;
+        
+        return Positioned(
+          bottom: baseMargin + previewOffset,
+          right: 10,
+          child: child!,
+        );
+      },
       child: GestureDetector(
         onTap: _onMapsButtonTap,
         child: Container(
@@ -164,28 +156,6 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  // Handler for tapping the maps button: open map selection view
-  Future<void> _onMapsButtonTap() async{
-    if (!mounted) return;
-    final selected = await Navigator.push<MapInfo>(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) => MapSelectionPage(
-              mapId: _currentMapId!,
-              mapName: _currentMapName!,
-            ),
-      ),
-    );
-    if (selected != null){
-      setState(() {
-        _currentMapId = selected.id;
-        _currentMapName = selected.name;
-      });
-      _mapKey.currentState?.reloadMarkers(selected.id!);
-    }
-  }
-
   // Positioned preview bar at bottom when a place is selected
   Widget _buildPlacePreviewPositioned() {
     return Positioned(
@@ -196,8 +166,6 @@ class _MapPageState extends State<MapPage> {
         behavior: HitTestBehavior.opaque,
         onTap: _onPlacePreviewTap,
         child: PlacePreview(
-          place: _selectedPlace!,
-          onClose: _onPlacePreviewClose,
           placeService: _placesService,
         ),
       ),
@@ -210,25 +178,9 @@ class _MapPageState extends State<MapPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (_) => PlaceDetailsPage(
-              place: _selectedPlace!,
-              mapViewKey: _mapKey,
-              markerId: _selectedMarkerId,
-            ),
+        builder: (_) => const PlaceDetailsPage(),
       ),
     );
-  }
-
-  // Close the place preview and clear selection state
-  void _onPlacePreviewClose() {
-    setState(() {
-      _selectedPlaceName = null;
-      _selectedPlace = null;
-      _searchController.clear();
-      _searchMarker = null;
-      _selectedMarkerId = null;
-    });
   }
 
   // Callback when the GoogleMap is created
@@ -242,10 +194,8 @@ class _MapPageState extends State<MapPage> {
     String? sessionToken,
   ) async {
     if (!mounted) return;
-    // Close search page
     Navigator.pop(context);
     PlaceInformation? updatedPlace = place;
-    // Fetch full details if location is missing
     if (place.location == null) {
       updatedPlace = await _placesService.getPlaceDetails(
         place.placeId,
@@ -254,7 +204,6 @@ class _MapPageState extends State<MapPage> {
     }
     if (!mounted) return;
     if (updatedPlace == null) {
-      // Show error if details fetch failed
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("❌ Could not fetch place details."),
@@ -264,21 +213,22 @@ class _MapPageState extends State<MapPage> {
       return;
     }
     final coords = updatedPlace.location;
-    // Add marker and animate camera to the selected place
 
     if (coords != null && _mapController != null) {
       final marker = updatedPlace.toMarker();
 
       if (marker != null) {
         setState(() {
-          _searchMarker = marker;
-          _selectedPlace = updatedPlace;
           _selectedPlaceName = updatedPlace!.name;
           _searchController.text = _selectedPlaceName!;
-          _selectedMarkerId =
-          _mapKey.currentState?.getMarkerIdForPlace(updatedPlace.placeId);
         });
         _mapController!.animateCamera(CameraUpdate.newLatLngZoom(coords, 15));
+        
+        // Update providers
+        if (context.mounted) {
+          final container = ProviderScope.containerOf(context);
+          container.read(selectedPlaceProvider.notifier).update(updatedPlace);
+        }
       }
     }
   }
@@ -300,19 +250,55 @@ class _MapPageState extends State<MapPage> {
       orElse: () => MapInfo(id: '', name: '', owner: ''),
     );
     if (def.id!.isEmpty) return;
+
+    // Update local state
     setState(() {
       _currentMapId = def.id;
       _currentMapName = def.name;
     });
+
+    // Update providers
+    if (context.mounted) {
+      final container = ProviderScope.containerOf(context);
+      container.read(activeMapProvider.notifier).state = def;
+    }
   }
 
   // Handle taps directly on the map to select a place marker
   void _handlePlaceTap(PlaceInformation place) {
     setState(() {
-      _selectedPlace = place;
       _selectedPlaceName = place.name;
-      _selectedMarkerId = _mapKey.currentState?.getMarkerIdForPlace(place.placeId);
-      _searchMarker = null;
     });
+    
+    // Update providers
+    if (context.mounted) {
+      final container = ProviderScope.containerOf(context);
+      container.read(selectedPlaceProvider.notifier).update(place);
+    }
+  }
+
+  // Handler for tapping the maps button: open map selection view
+  Future<void> _onMapsButtonTap() async {
+    if (!mounted) return;
+    final selected = await Navigator.push<MapInfo>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapSelectionPage(
+          mapId: _currentMapId!,
+          mapName: _currentMapName!,
+        ),
+      ),
+    );
+    if (selected != null) {
+      setState(() {
+        _currentMapName = selected.name;
+      });
+
+      // Update providers
+      if (context.mounted) {
+        final container = ProviderScope.containerOf(context);
+        container.read(activeMapProvider.notifier).state = selected;
+      }
+    }
   }
 }
