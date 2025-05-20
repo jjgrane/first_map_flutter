@@ -4,7 +4,11 @@ import 'package:location/location.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:first_maps_project/providers/map_providers.dart';
+import 'package:first_maps_project/providers/maps/map_providers.dart';
+import 'package:first_maps_project/widgets/models/map_marker.dart';
+import 'package:first_maps_project/widgets/models/group.dart';
+import 'package:first_maps_project/widgets/models/map_info.dart';
+import 'package:first_maps_project/providers/maps/map_providers.dart';
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
@@ -74,7 +78,6 @@ class MapViewState extends State<MapView> {
           style: _mapStyle,
         ),
         _MarkerSetConsumer(
-          onPlaceSelected: widget.onPlaceSelected,
           onMarkersUpdated: (markers) {
             if (!mounted) return;
             setState(() => _currentMarkers = markers);
@@ -112,86 +115,60 @@ class MapViewState extends State<MapView> {
   }
 }
 
+// Provider combinado para inicializar pins solo cuando cambia el mapa y todo está listo
+final mapReadyProvider = Provider<({List<MapMarker> markers, List<Group> groups, MapInfo map})?>((ref) {
+  final activeMap = ref.watch(activeMapProvider);
+  final markersAsync = ref.watch(markersStateProvider);
+  final groupsAsync = ref.watch(groupsStateProvider);
+
+  if (activeMap != null &&
+      markersAsync is AsyncData<List<MapMarker>> &&
+      groupsAsync is AsyncData<List<Group>>) {
+    // Asegura que los valores no sean null
+    final markers = markersAsync.value ?? <MapMarker>[];
+    final groups = groupsAsync.value ?? <Group>[];
+    return (markers: markers, groups: groups, map: activeMap);
+  }
+  return null;
+});
+
 /// Widget that manages markers using Riverpod
 class _MarkerSetConsumer extends ConsumerWidget {
-  final void Function(PlaceInformation) onPlaceSelected;
   final void Function(Set<Marker>) onMarkersUpdated;
 
   const _MarkerSetConsumer({
-    required this.onPlaceSelected,
     required this.onMarkersUpdated,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the active map to trigger updates when it changes
-    final activeMap = ref.watch(activeMapProvider);
-    
-    // Listen to markers state changes
-    ref.listen(markersStateProvider, (previous, next) {
-      _updateMarkersFromState(ref);
+    ref.watch(activeMapResetProvider);
+    ref.listen(googleMapMarkersProvider, (previous, next) {
+      next.whenData((markers) {
+        onMarkersUpdated(markers);
+      });
     });
-
-    // Listen to selected marker changes
-    ref.listen(selectedMarkerProvider, (previous, next) {
-      _updateSelectedMarker(ref);
+    ref.listen(mapReadyProvider, (prev, next) {
+      if (next != null) {
+        ref.read(googleMapMarkersProvider.notifier).initialize(
+          next.markers,
+          ref.read(selectedMarkerProvider),
+          next.groups,
+        );
+      }
     });
-
-    return const SizedBox.shrink();
-  }
-
-  Future<void> _updateMarkersFromState(WidgetRef ref) async {
-    final markersNotifier = ref.read(googleMapMarkersProvider.notifier);
-    markersNotifier.setLoading();
-
-    try {
+    // Listen for changes in the selected marker and update Google markers
+    ref.listen(selectedMarkerProvider, (prev, next) {
       final markersAsync = ref.read(markersStateProvider);
-      final selectedMarker = ref.read(selectedMarkerProvider);
-      final converter = ref.read(markerConverterProvider);
-
-      final Set<Marker> markers = await markersAsync.when(
-        data: (markers) async {
-          return await converter.convertToGoogleMarkers(markers, selectedMarker: selectedMarker);
-        },
-        loading: () => <Marker>{},
-        error: (error, stack) => <Marker>{},
-      );
-
-      markersNotifier.updateMarkers(markers);
-      onMarkersUpdated(markers);
-    } catch (error, stackTrace) {
-      markersNotifier.setError(error, stackTrace);
-    }
-  }
-
-  Future<void> _updateSelectedMarker(WidgetRef ref) async {
-    final selectedMarker = ref.read(selectedMarkerProvider);
-    final markersAsync = ref.read(markersStateProvider);
-    final converter = ref.read(markerConverterProvider);
-    final markersNotifier = ref.read(googleMapMarkersProvider.notifier);
-
-    await markersAsync.when(
-      data: (markers) async {
-        Set<Marker> finalMarkers;
-        
-        if (selectedMarker == null) {
-          // Si no hay marcador seleccionado, convertimos solo los marcadores del state
-          finalMarkers = await converter.convertToGoogleMarkers(markers, selectedMarker: null);
-        } else if (!markers.any((m) => m.markerId == selectedMarker.markerId)) {
-          // Si el marcador no existe en la lista, combinamos
-          final baseMarkers = await converter.convertToGoogleMarkers(markers, selectedMarker: null);
-          final selectedGoogleMarker = await converter.convertToGoogleMarkers([selectedMarker], selectedMarker: selectedMarker);
-          finalMarkers = {...baseMarkers, ...selectedGoogleMarker};
-        } else {
-          // Si el marcador ya existe en la lista, no hacemos nada
-          return;
-        }
-
-        markersNotifier.updateMarkers(finalMarkers);
-        onMarkersUpdated(finalMarkers);
-      },
-      loading: () => null,
-      error: (_, __) => null,
-    );
+      final groupsAsync = ref.read(groupsStateProvider);
+      if (markersAsync is AsyncData && groupsAsync is AsyncData) {
+        ref.read(googleMapMarkersProvider.notifier).updateSelectedMarker(
+          markersAsync.value ?? [],
+          next,
+          groupsAsync.value ?? [],
+        );
+      }
+    });
+    return const SizedBox.shrink();
   }
 }

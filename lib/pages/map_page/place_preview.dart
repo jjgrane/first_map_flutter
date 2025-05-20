@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/widgets/models/map_marker.dart';
 import 'package:first_maps_project/pages/map_page/groups_view_page.dart';
-import 'package:first_maps_project/services/places_service.dart';
-import 'package:first_maps_project/providers/map_providers.dart';
+import 'package:first_maps_project/services/maps/places_service.dart';
+import 'package:first_maps_project/providers/maps/map_providers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:first_maps_project/widgets/models/group.dart';
 
 class PlacePreview extends ConsumerStatefulWidget {
   final PlacesService placeService;
@@ -62,7 +63,22 @@ class _PlacePreviewState extends ConsumerState<PlacePreview> with SingleTickerPr
     // Observar el marcador actual
     final currentMarker = ref.watch(selectedMarkerProvider);
     final isSaved = currentMarker?.markerId != null;
-    final savedIcon = currentMarker?.pinIcon;
+
+    // Buscar el emoji del grupo si el marcador está guardado
+    String? savedEmoji;
+    if (isSaved && currentMarker?.groupId != null) {
+      final groupsAsync = ref.watch(groupsStateProvider);
+      groupsAsync.whenData((groups) {
+        Group? group;
+        for (final g in groups) {
+          if (g.id == currentMarker!.groupId) {
+            group = g;
+            break;
+          }
+        }
+        savedEmoji = group?.emoji;
+      });
+    }
 
     return SizeTransition(
       sizeFactor: _animation,
@@ -193,12 +209,12 @@ class _PlacePreviewState extends ConsumerState<PlacePreview> with SingleTickerPr
                           children: [
                             Expanded(
                               child: _actionButton(
-                                isSaved ? (savedIcon ?? '') : 'Add',
+                                isSaved ? (savedEmoji ?? '') : 'Add',
                                 isSaved ? null : Icons.add,
-                                  () => _onAddTapped(currentMarker),
-                                  backgroundColor: isSaved 
-                                        ? Colors.orange
-                                        : const Color(0xFF134264),
+                                () => _onAddTapped(currentMarker),
+                                backgroundColor: isSaved 
+                                      ? Colors.orange
+                                      : const Color(0xFF134264),
                               ),
                             ),
                             const SizedBox(width: 4),

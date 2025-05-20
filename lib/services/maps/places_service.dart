@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
-import 'package:first_maps_project/services/firebase_places_details_service.dart';
+import 'package:first_maps_project/services/firebase/places/firebase_places_details_service.dart';
 
 class PlacesService {
   final String apiKey;

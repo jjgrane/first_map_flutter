@@ -3,8 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/pages/map_page/place_search_bar.dart';
-import 'package:first_maps_project/services/firebase_maps_service.dart';
-import 'package:first_maps_project/services/places_service.dart';
+import 'package:first_maps_project/services/firebase/maps/firebase_maps_service.dart';
+import 'package:first_maps_project/services/maps/places_service.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/widgets/models/map_info.dart';
 import 'package:first_maps_project/widgets/google_maps/map_view.dart';
@@ -12,7 +12,7 @@ import 'package:first_maps_project/pages/place_details_page.dart';
 import 'package:first_maps_project/pages/map_page/place_preview.dart';
 import 'package:first_maps_project/pages/search_page/search_page.dart';
 import 'package:first_maps_project/pages/map_page/map_selection_page.dart';
-import 'package:first_maps_project/providers/map_providers.dart';
+import 'package:first_maps_project/providers/maps/map_providers.dart';
 
 // Main page displaying the Google Map and related overlays
 class MapPage extends StatefulWidget {
@@ -34,7 +34,6 @@ class _MapPageState extends State<MapPage> {
   late final PlacesService _placesService;
 
   // Map State
-  String? _currentMapId;
   String? _currentMapName;
   String? _selectedPlaceName;
 
@@ -253,7 +252,6 @@ class _MapPageState extends State<MapPage> {
 
     // Update local state
     setState(() {
-      _currentMapId = def.id;
       _currentMapName = def.name;
     });
 
@@ -283,10 +281,7 @@ class _MapPageState extends State<MapPage> {
     final selected = await Navigator.push<MapInfo>(
       context,
       MaterialPageRoute(
-        builder: (_) => MapSelectionPage(
-          mapId: _currentMapId!,
-          mapName: _currentMapName!,
-        ),
+        builder: (_) => MapSelectionPage(),
       ),
     );
     if (selected != null) {

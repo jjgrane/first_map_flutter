@@ -1,9 +1,6 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart'; 
-import 'package:first_maps_project/services/firebase/firebase_markers_service.dart';
-import 'package:first_maps_project/services/firebase_places_details_service.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:first_maps_project/services/firebase/maps/firebase_markers_service.dart';
+import 'package:first_maps_project/services/firebase/places/firebase_places_details_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MapMarker {
@@ -11,14 +8,14 @@ class MapMarker {
   final String detailsId;
   final String mapId;
   final PlaceInformation? information;
-  final String pinIcon;
+  final String? groupId;
 
   MapMarker({
     this.markerId,
     required this.detailsId,
     required this.mapId,
     this.information,
-    required this.pinIcon,
+    this.groupId,
   });
 
   /// Creates a copy of this MapMarker with the given fields replaced with the new values
@@ -27,24 +24,14 @@ class MapMarker {
     String? detailsId,
     String? mapId,
     PlaceInformation? information,
-    String? pinIcon,
+    String? groupId,
   }) {
     return MapMarker(
       markerId: markerId ?? this.markerId,
       detailsId: detailsId ?? this.detailsId,
       mapId: mapId ?? this.mapId,
       information: information ?? this.information,
-      pinIcon: pinIcon ?? this.pinIcon,
-    );
-  }
-
-  Marker? toMarker(void Function(PlaceInformation) onPlaceSelected, BitmapDescriptor icon) {
-    if (markerId == null || information?.location == null) return null;
-    return Marker(
-      markerId: MarkerId(markerId!),
-      position: information!.location!,
-      icon: icon,
-      onTap: () => onPlaceSelected(information!),
+      groupId: groupId ?? this.groupId,
     );
   }
 
@@ -53,7 +40,7 @@ class MapMarker {
       markerId: id,
       detailsId: data['details_id'] as String,
       mapId: data['map_id'] as String,
-      pinIcon: data['pin_icon'] as String,
+      groupId: data['group_id'] as String?,
       information: null,
     );
   }
@@ -72,34 +59,36 @@ class MapMarker {
     return {
       'details_id': detailsId,
       'map_id': mapId,
-      'pin_icon': pinIcon,
+      'group_id': groupId,
       'added_by': 'anonymous',
       'updated_at': FieldValue.serverTimestamp(),
     };
   }
 
-    Future<MapMarker> save(FirebaseMarkersService svc) async {
-    // 1) Write the bare data (without an ID) and get back the new doc ID:
+  Future<MapMarker> save(FirebaseMarkersService svc) async {
     final newId = await svc.addMarker(this);
-    // 2) Return a new instance that carries that ID:
-    MapMarker marker =  MapMarker(
-      markerId: newId,
-      detailsId: detailsId,
-      mapId: mapId,
-      information: information,
-      pinIcon: pinIcon,
-    );
-  /*
-    print("SE ENTRO A ESTA FUNCION");
-    await http.post(
-      Uri.parse('http://192.168.0.107:8080/echo'), // Cambia el endpoint según tu backend
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(marker),
-    );
-  */
-
-
-    return marker;
+    return copyWith(markerId: newId);
   }
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MapMarker &&
+          runtimeType == other.runtimeType &&
+          markerId == other.markerId &&
+          detailsId == other.detailsId &&
+          mapId == other.mapId &&
+          groupId == other.groupId;
+
+  @override
+  int get hashCode =>
+      markerId.hashCode ^
+      detailsId.hashCode ^
+      mapId.hashCode ^
+      groupId.hashCode;
+
+  @override
+  String toString() {
+    return 'MapMarker{markerId: $markerId, detailsId: $detailsId, mapId: $mapId, groupId: $groupId}';
+  }
 }
