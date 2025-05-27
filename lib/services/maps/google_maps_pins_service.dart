@@ -78,8 +78,13 @@ class GoogleMapsPinsService {
 
     for (final marker in markers) {
       final isSelected = marker == selectedMarker;
-      final googleMarker = await createGoogleMarker(marker, groups, ref: ref, isSelected: isSelected);
-      googleMarkers.add(googleMarker);
+      // Usar el googleMarker ya creado si existe y no es el seleccionado
+      if (marker.googleMarker != null && !isSelected) {
+        googleMarkers.add(marker.googleMarker!);
+      } else {
+        final googleMarker = await createGoogleMarker(marker, groups, ref: ref, isSelected: isSelected);
+        googleMarkers.add(googleMarker);
+      }
     }
 
     return googleMarkers;

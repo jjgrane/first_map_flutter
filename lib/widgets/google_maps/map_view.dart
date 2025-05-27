@@ -31,7 +31,7 @@ class MapViewState extends State<MapView> {
   String? _mapStyle;
   GoogleMapController? _mapController;
   Set<Marker> _currentMarkers = {};
-  
+
   // Default center value
   static const LatLng _defaultCenter = LatLng(-34.5928772, -58.3780337);
 
@@ -72,7 +72,7 @@ class MapViewState extends State<MapView> {
             zoom: 13,
           ),
           myLocationEnabled: true,
-          myLocationButtonEnabled: true,
+          myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
           markers: _currentMarkers,
           style: _mapStyle,
@@ -94,7 +94,8 @@ class MapViewState extends State<MapView> {
       if (!serviceEnabled) return;
     }
 
-    PermissionStatus permissionGranted = await _locationController.hasPermission();
+    PermissionStatus permissionGranted =
+        await _locationController.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _locationController.requestPermission();
       if (permissionGranted != PermissionStatus.granted) return;
@@ -113,48 +114,63 @@ class MapViewState extends State<MapView> {
       }
     });
   }
+
+  LatLng? get currentLocation => _currentLocation;
 }
 
 // Provider combinado para inicializar pins solo cuando cambia el mapa y todo está listo
-final mapReadyProvider = Provider<({List<MapMarker> markers, List<Group> groups, MapInfo map})?>((ref) {
-  final activeMap = ref.watch(activeMapProvider);
-  final markersAsync = ref.watch(markersStateProvider);
-  final groupsAsync = ref.watch(groupsStateProvider);
+final mapReadyProvider =
+    Provider<({List<MapMarker> markers, List<Group> groups, MapInfo map})?>((
+      ref,
+    ) {
+      final activeMap = ref.watch(activeMapProvider);
+      final markersAsync = ref.watch(markersStateProvider);
+      final groupsAsync = ref.watch(groupsStateProvider);
 
-  if (activeMap != null &&
-      markersAsync is AsyncData<List<MapMarker>> &&
-      groupsAsync is AsyncData<List<Group>>) {
-    // Asegura que los valores no sean null
-    final markers = markersAsync.value ?? <MapMarker>[];
-    final groups = groupsAsync.value ?? <Group>[];
-    return (markers: markers, groups: groups, map: activeMap);
-  }
-  return null;
-});
+      if (activeMap != null &&
+          markersAsync is AsyncData<List<MapMarker>> &&
+          groupsAsync is AsyncData<List<Group>>) {
+        // Asegura que los valores no sean null
+        final markers = markersAsync.value ?? <MapMarker>[];
+        final groups = groupsAsync.value ?? <Group>[];
+        return (markers: markers, groups: groups, map: activeMap);
+      }
+      return null;
+    });
 
 /// Widget that manages markers using Riverpod
-class _MarkerSetConsumer extends ConsumerWidget {
+class _MarkerSetConsumer extends ConsumerStatefulWidget {
   final void Function(Set<Marker>) onMarkersUpdated;
 
-  const _MarkerSetConsumer({
-    required this.onMarkersUpdated,
-  });
+  const _MarkerSetConsumer({required this.onMarkersUpdated});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MarkerSetConsumer> createState() => _MarkerSetConsumerState();
+}
+
+class _MarkerSetConsumerState extends ConsumerState<_MarkerSetConsumer> {
+  bool _markersInitialized = false;
+  String? _lastMapId;
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(activeMapResetProvider);
     ref.listen(googleMapMarkersProvider, (previous, next) {
       next.whenData((markers) {
-        onMarkersUpdated(markers);
+        widget.onMarkersUpdated(markers);
       });
     });
     ref.listen(mapReadyProvider, (prev, next) {
-      if (next != null) {
-        ref.read(googleMapMarkersProvider.notifier).initialize(
-          next.markers,
-          ref.read(selectedMarkerProvider),
-          next.groups,
-        );
+      if (next != null && !_markersInitialized) {
+        print('BBBBBBB-ERRORRRRR - Loading markers for map ');
+        ref
+            .read(googleMapMarkersProvider.notifier)
+            .initialize(
+              next.markers,
+              ref.read(selectedMarkerProvider),
+              next.groups,
+            );
+        _markersInitialized = true;
       }
     });
     // Listen for changes in the selected marker and update Google markers
@@ -162,13 +178,30 @@ class _MarkerSetConsumer extends ConsumerWidget {
       final markersAsync = ref.read(markersStateProvider);
       final groupsAsync = ref.read(groupsStateProvider);
       if (markersAsync is AsyncData && groupsAsync is AsyncData) {
-        ref.read(googleMapMarkersProvider.notifier).updateSelectedMarker(
-          markersAsync.value ?? [],
-          next,
-          groupsAsync.value ?? [],
-        );
+        ref
+            .read(googleMapMarkersProvider.notifier)
+            .updateSelectedMarker(
+              markersAsync.value ?? [],
+              next,
+              groupsAsync.value ?? [],
+            );
       }
     });
+
+    // Flag logic: only load markers once per map id
+    final groupsAsync = ref.watch(groupsStateProvider);
+    final mapId = ref.watch(activeMapProvider)?.id;
+    if (mapId != _lastMapId) {
+      _markersInitialized = false;
+      _lastMapId = mapId;
+    }
+    if (!_markersInitialized && groupsAsync is AsyncData<List<Group>>) {
+      if (mapId != null) {
+        print('AAAAAA-ERRORRRRR - Loading markers for map id: $mapId');
+        ref.read(markersStateProvider.notifier).loadMarkers();
+      }
+    }
+
     return const SizedBox.shrink();
   }
 }

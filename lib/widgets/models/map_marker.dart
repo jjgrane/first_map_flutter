@@ -2,6 +2,7 @@ import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/services/firebase/maps/firebase_markers_service.dart';
 import 'package:first_maps_project/services/firebase/places/firebase_places_details_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapMarker {
   final String? markerId;
@@ -9,6 +10,8 @@ class MapMarker {
   final String mapId;
   final PlaceInformation? information;
   final String? groupId;
+  final Marker? googleMarker;
+  
 
   MapMarker({
     this.markerId,
@@ -16,6 +19,7 @@ class MapMarker {
     required this.mapId,
     this.information,
     this.groupId,
+    this.googleMarker,
   });
 
   /// Creates a copy of this MapMarker with the given fields replaced with the new values
@@ -25,6 +29,7 @@ class MapMarker {
     String? mapId,
     PlaceInformation? information,
     String? groupId,
+    Marker? googleMarker,
   }) {
     return MapMarker(
       markerId: markerId ?? this.markerId,
@@ -32,6 +37,7 @@ class MapMarker {
       mapId: mapId ?? this.mapId,
       information: information ?? this.information,
       groupId: groupId ?? this.groupId,
+      googleMarker: googleMarker ?? this.googleMarker,
     );
   }
 
@@ -42,6 +48,7 @@ class MapMarker {
       mapId: data['map_id'] as String,
       groupId: data['group_id'] as String?,
       information: null,
+      googleMarker: null,
     );
   }
 

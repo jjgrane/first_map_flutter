@@ -50,9 +50,7 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
   final FirebaseMarkersService _markersService;
   final String? mapId;
 
-  MarkerNotifier(this.ref, this._markersService, this.mapId) : super(const AsyncValue.loading()) {
-    if (mapId != null) loadMarkers();
-  }
+  MarkerNotifier(this.ref, this._markersService, this.mapId) : super(const AsyncValue.loading());
 
   Future<void> loadMarkers() async {
     if (mapId == null) {
@@ -63,7 +61,18 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
     try {
       state = const AsyncValue.loading();
       final markers = await _markersService.getMarkersByMapId(mapId!);
-      state = AsyncValue.data(markers);
+      // Enriquecer cada MapMarker con su googleMarker
+      final groups = ref.read(groupsStateProvider).maybeWhen(
+        data: (g) => g,
+        orElse: () => <Group>[],
+      );
+      final pinsService = ref.read(googleMapsPinsServiceProvider);
+      final List<MapMarker> enrichedMarkers = [];
+      for (final marker in markers) {
+        final googleMarker = await pinsService.createGoogleMarker(marker, groups, ref: ref);
+        enrichedMarkers.add(marker.copyWith(googleMarker: googleMarker));
+      }
+      state = AsyncValue.data(enrichedMarkers);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -73,16 +82,18 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
     try {
       final markerId = await _markersService.addMarker(marker);
       final updatedMarker = marker.copyWith(markerId: markerId);
-      state.whenData((markers) {
-        state = AsyncValue.data([...markers, updatedMarker]);
-      });
-      // Get current groups state
-      final groups = ref.read(groupsStateProvider).when(
-        data: (groups) => groups,
-        loading: () => <Group>[],
-        error: (_, __) => <Group>[],
+      // Enriquecer con googleMarker
+      final groups = ref.read(groupsStateProvider).maybeWhen(
+        data: (g) => g,
+        orElse: () => <Group>[],
       );
-      ref.read(googleMapMarkersProvider.notifier).addMarker(updatedMarker, groups);
+      final pinsService = ref.read(googleMapsPinsServiceProvider);
+      final googleMarker = await pinsService.createGoogleMarker(updatedMarker, groups, ref: ref);
+      final enrichedMarker = updatedMarker.copyWith(googleMarker: googleMarker);
+      state.whenData((markers) {
+        state = AsyncValue.data([...markers, enrichedMarker]);
+      });
+      ref.read(googleMapMarkersProvider.notifier).addMarker(enrichedMarker, groups);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -105,19 +116,21 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
   Future<void> updateMarker(MapMarker marker) async {
     try {
       await _markersService.updateMarker(marker);
+      // Enriquecer con googleMarker
+      final groups = ref.read(groupsStateProvider).maybeWhen(
+        data: (g) => g,
+        orElse: () => <Group>[],
+      );
+      final pinsService = ref.read(googleMapsPinsServiceProvider);
+      final googleMarker = await pinsService.createGoogleMarker(marker, groups, ref: ref);
+      final enrichedMarker = marker.copyWith(googleMarker: googleMarker);
       state.whenData((markers) {
         final updatedMarkers = markers.map((m) => 
-          m.markerId == marker.markerId ? marker : m
+          m.markerId == marker.markerId ? enrichedMarker : m
         ).toList();
         state = AsyncValue.data(updatedMarkers);
       });
-      // Get current groups state
-      final groups = ref.read(groupsStateProvider).when(
-        data: (groups) => groups,
-        loading: () => <Group>[],
-        error: (_, __) => <Group>[],
-      );
-      ref.read(googleMapMarkersProvider.notifier).updateMarker(marker, groups);
+      ref.read(googleMapMarkersProvider.notifier).updateMarker(enrichedMarker, groups);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -184,15 +197,61 @@ class GroupsNotifier extends StateNotifier<AsyncValue<List<Group>>> {
     }
   }
 
-  Future<void> updateGroup(Group group) async {
+  Future<void> updateGroup(Group group, Ref ref) async {
     try {
-      await _groupsService.updateGroup(group);
+      // 1. Obtener el grupo anterior para comparar el emoji
+      Group? previousGroup;
       state.whenData((groups) {
-        final updatedGroups = groups.map((g) => 
-          g.id == group.id ? group : g
-        ).toList();
+        previousGroup = null;
+        for (final g in groups) {
+          if (g.id == group.id) {
+            previousGroup = g;
+            break;
+          }
+        }
+      });
+
+      await _groupsService.updateGroup(group);
+      // Actualizar el estado de grupos
+      state.whenData((groups) {
+        final updatedGroups = groups.map((g) => g.id == group.id ? group : g).toList();
         state = AsyncValue.data(updatedGroups);
       });
+
+      // 2. Si el emoji cambió, actualizar los markers asociados
+      if (previousGroup != null && previousGroup!.emoji != group.emoji) {
+        // Obtener la lista de markers y grupos actualizada
+        final markers = ref.read(markersStateProvider).maybeWhen(
+          data: (m) => m,
+          orElse: () => <MapMarker>[],
+        );
+        final groups = ref.read(groupsStateProvider).maybeWhen(
+          data: (g) => g,
+          orElse: () => <Group>[],
+        );
+        final pinsService = ref.read(googleMapsPinsServiceProvider);
+
+        // Enriquecer todos los markers afectados
+        final List<MapMarker> updatedMarkers = [];
+        for (final marker in markers) {
+          if (marker.groupId == group.id) {
+            final googleMarker = await pinsService.createGoogleMarker(marker, groups, ref: ref);
+            updatedMarkers.add(marker.copyWith(googleMarker: googleMarker));
+          } else {
+            updatedMarkers.add(marker);
+          }
+        }
+
+        // Actualizar el estado de markers en batch
+        ref.read(markersStateProvider.notifier).state = AsyncValue.data(updatedMarkers);
+
+        // Refrescar el set de Google Markers
+        ref.read(googleMapMarkersProvider.notifier).initialize(
+          updatedMarkers,
+          ref.read(selectedMarkerProvider),
+          groups,
+        );
+      }
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -200,9 +259,11 @@ class GroupsNotifier extends StateNotifier<AsyncValue<List<Group>>> {
 
   void toggleGroupActive(String groupId) {
     state.whenData((groups) {
-      final updatedGroups = groups.map((g) => 
+      final updatedGroups = groups.map((g) =>
         g.id == groupId ? g.copyWith(active: !g.active) : g
       ).toList();
+      print('Toggling group $groupId. New actives: '
+        '${updatedGroups.map((g) => '${g.name}:${g.active}').join(', ')}');
       state = AsyncValue.data(updatedGroups);
     });
   }
@@ -340,6 +401,65 @@ class GoogleMapMarkersNotifier extends StateNotifier<AsyncValue<Set<Marker>>> {
         markers.removeWhere((m) => m.markerId.value == markerId);
         state = AsyncValue.data(markers);
       });
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  /// Refresca todos los pins usando el estado actual de markersStateProvider
+  Future<void> refresh() async {
+    try {
+      final markers = ref.read(markersStateProvider).maybeWhen(
+        data: (m) => m,
+        orElse: () => <MapMarker>[],
+      );
+      final Set<Marker> googleMarkers = {
+        for (final marker in markers)
+          if (marker.googleMarker != null) marker.googleMarker!
+      };
+      state = AsyncValue.data(googleMarkers);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  /// Filtra los pins mostrando solo los de los grupos activos (group.active == true)
+  Future<void> groupFilter() async {
+    try {
+      final groups = ref.read(groupsStateProvider).maybeWhen(
+        data: (g) => g,
+        orElse: () => <Group>[],
+      );
+      final activeGroupIds = groups.where((g) => g.active).map((g) => g.id).whereType<String>().toList();
+      print('Active group ids: $activeGroupIds');
+      final markers = ref.read(markersStateProvider).maybeWhen(
+        data: (m) => m,
+        orElse: () => <MapMarker>[],
+      );
+      final Set<Marker> googleMarkers = {
+        for (final marker in markers)
+          if (marker.groupId != null && activeGroupIds.contains(marker.groupId) && marker.googleMarker != null)
+            marker.googleMarker!
+      };
+      state = AsyncValue.data(googleMarkers);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  /// Filtra los pins por una lista de placeIds (detailsId)
+  Future<void> placesFilter(List<String> markerIds) async {
+    try {
+      final markers = ref.read(markersStateProvider).maybeWhen(
+        data: (m) => m,
+        orElse: () => <MapMarker>[],
+      );
+      final Set<Marker> googleMarkers = {
+        for (final marker in markers)
+          if (markerIds.contains(marker.markerId) && marker.googleMarker != null)
+            marker.googleMarker!
+      };
+      state = AsyncValue.data(googleMarkers);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
