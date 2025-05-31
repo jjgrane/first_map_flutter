@@ -20,7 +20,6 @@ class FirebaseGroupsService {
       });
       return docRef.id;
     } catch (error) {
-      print('Error adding group: $error');
       rethrow;
     }
   }
@@ -69,20 +68,16 @@ class FirebaseGroupsService {
   /// Retrieves all groups associated with a given mapId
   Future<List<Group>> getGroupsByMapId(String mapId) async {
     try {
-      debugPrint('[FirebaseGroupsService] getGroupsByMapId: querying for mapId=$mapId');
       final snapshot = await _groupsRef
           .where('map_id', isEqualTo: mapId)
           .get();
       
-      debugPrint('[FirebaseGroupsService] getGroupsByMapId: got ${snapshot.docs.length} results');
       
       final groups = await Future.wait(snapshot.docs.map((doc) async {
         final data = doc.data() as Map<String, dynamic>;
-        debugPrint('[FirebaseGroupsService] getGroupsByMapId: doc=${doc.id} data=$data');
         return await Group.fromFirestoreAsync(data, doc.id);
       }));
 
-      debugPrint('[FirebaseGroupsService] getGroupsByMapId: returning groups=$groups');
       return groups;
     } catch (error) {
       debugPrint('[FirebaseGroupsService] getGroupsByMapId: error getting groups for map $mapId: $error');

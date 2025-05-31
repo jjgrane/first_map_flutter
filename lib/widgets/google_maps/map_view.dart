@@ -162,7 +162,6 @@ class _MarkerSetConsumerState extends ConsumerState<_MarkerSetConsumer> {
     });
     ref.listen(mapReadyProvider, (prev, next) {
       if (next != null && !_markersInitialized) {
-        print('BBBBBBB-ERRORRRRR - Loading markers for map ');
         ref
             .read(googleMapMarkersProvider.notifier)
             .initialize(
@@ -197,7 +196,6 @@ class _MarkerSetConsumerState extends ConsumerState<_MarkerSetConsumer> {
     }
     if (!_markersInitialized && groupsAsync is AsyncData<List<Group>>) {
       if (mapId != null) {
-        print('AAAAAA-ERRORRRRR - Loading markers for map id: $mapId');
         ref.read(markersStateProvider.notifier).loadMarkers();
       }
     }

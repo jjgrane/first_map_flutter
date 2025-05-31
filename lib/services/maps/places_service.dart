@@ -63,7 +63,6 @@ class PlacesService {
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=$apiKey',
     );
-    print(sessionToken);
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);

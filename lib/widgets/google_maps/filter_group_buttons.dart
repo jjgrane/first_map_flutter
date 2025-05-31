@@ -46,9 +46,7 @@ class _FilterGroupButtonsState extends ConsumerState<FilterGroupButtons> with Si
   }
 
   Future<void> _onGroupTap(List<Group> groups, Group tapped) async {
-    debugPrint('[GroupFilter] Tap on group: emoji=${tapped.emoji}, id=${tapped.id}, active=${tapped.active}');
     final activeGroupsBefore = groups.where((g) => g.active).toList();
-    debugPrint('[GroupFilter] Active groups before tap: ${activeGroupsBefore.map((g) => g.emoji).join(", ")}');
     final notifier = ref.read(groupsStateProvider.notifier);
     // If all groups are active, deactivate all and activate only tapped
     if (activeGroupsBefore.length == groups.length) {
@@ -79,15 +77,12 @@ class _FilterGroupButtonsState extends ConsumerState<FilterGroupButtons> with Si
       orElse: () => <Group>[],
     );
     final activeIds = updatedGroups.where((g) => g.active).map((g) => g.id!).toList();
-    debugPrint('[GroupFilter] Active groups after tap: ${updatedGroups.where((g) => g.active).map((g) => g.emoji).join(", ")}');
-    debugPrint('[GroupFilter] Calling groupFilter with active group ids: $activeIds');
     await ref.read(googleMapMarkersProvider.notifier).groupFilter();
     // Log pins count after filter
     final pinsCount = ref.read(googleMapMarkersProvider).maybeWhen(
       data: (pins) => pins.length,
       orElse: () => 0,
     );
-    debugPrint('[GroupFilter] Pins shown after filter: $pinsCount');
   }
 
   @override
