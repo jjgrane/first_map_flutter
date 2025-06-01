@@ -21,10 +21,28 @@ class MapInfo {
     );
   }
 
+  /// Creates MapInfo from JSON (REST API)
+  factory MapInfo.fromJson(Map<String, dynamic> json) {
+    return MapInfo(
+      id: json['id'] as String?,
+      name: json['name'] as String,
+      owner: json['owner'] ?? 'Anonymous',
+    );
+  }
+
   /// Serialize this MapInfo into a Firestore-compatible map.
   /// Note: 'created_at' is handled server-side via FieldValue.serverTimestamp().
   Map<String, dynamic> toFirestore() {
     return {
+      'name': name,
+      'owner': owner,
+    };
+  }
+
+  /// Converts MapInfo to JSON (REST API)
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
       'name': name,
       'owner': owner,
     };

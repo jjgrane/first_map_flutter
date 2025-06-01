@@ -52,6 +52,34 @@ class MapMarker {
     );
   }
 
+  /// Creates a MapMarker from JSON (REST API)
+  factory MapMarker.fromJson(Map<String, dynamic> json) {
+    PlaceInformation? info;
+    if (json['information'] != null) {
+      info = PlaceInformation.fromJson(json['information']);
+    }
+    
+    return MapMarker(
+      markerId: json['marker_id'] as String?,
+      detailsId: json['details_id'] as String,
+      mapId: json['map_id'] as String,
+      groupId: json['group_id'] as String?,
+      information: info,
+      googleMarker: null, // Runtime-only field, not serialized
+    );
+  }
+
+  /// Converts MapMarker to JSON (REST API)
+  Map<String, dynamic> toJson() {
+    return {
+      if (markerId != null) 'marker_id': markerId,
+      'details_id': detailsId,
+      'map_id': mapId,
+      if (groupId != null) 'group_id': groupId,
+      if (information != null) 'information': information!.toJson(),
+    };
+  }
+
   /// Creates a MapMarker from Firestore data and loads its place information
   static Future<MapMarker> fromFirestoreWithDetails(Map<String, dynamic> data, String id) async {
     final marker = MapMarker.fromFirestore(data, id);

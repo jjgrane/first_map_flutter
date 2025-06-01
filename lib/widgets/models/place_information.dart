@@ -72,6 +72,32 @@ class PlaceInformation {
     );
   }
 
+  /// Creates PlaceInformation from JSON (REST API)
+  factory PlaceInformation.fromJson(Map<String, dynamic> json) {
+    LatLng? loc;
+    if (json['location'] != null && json['location'] is Map) {
+      final locData = json['location'] as Map<String, dynamic>;
+      if (locData['latitude'] != null && locData['longitude'] != null) {
+        loc = LatLng(
+          (locData['latitude'] as num).toDouble(),
+          (locData['longitude'] as num).toDouble(),
+        );
+      }
+    }
+    
+    return PlaceInformation(
+      placeId: json['place_id'] as String,
+      name: json['name'] as String,
+      address: json['address'] as String?,
+      location: loc,
+      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      totalRatings: json['total_ratings'] != null ? (json['total_ratings'] as num).toInt() : null,
+      website: json['website'] as String?,
+      mapsTags: List<String>.from(json['maps_tags'] ?? []),
+      firstPhotoRef: json['first_photo_ref'] as String?,
+    );
+  }
+
   /// Serialize this object to Firestore data for the `place_details` collection.
   Map<String, dynamic> toFirestore() {
     return {
@@ -88,6 +114,24 @@ class PlaceInformation {
       'first_photo_ref': firstPhotoRef,
       'maps_tags': mapsTags,
       'created_at': FieldValue.serverTimestamp(),
+    };
+  }
+
+  /// Converts PlaceInformation to JSON (REST API)
+  Map<String, dynamic> toJson() {
+    return {
+      'place_id': placeId,
+      'name': name,
+      if (address != null) 'address': address,
+      if (location != null) 'location': {
+        'latitude': location!.latitude,
+        'longitude': location!.longitude,
+      },
+      if (rating != null) 'rating': rating,
+      if (totalRatings != null) 'total_ratings': totalRatings,
+      if (website != null) 'website': website,
+      'maps_tags': mapsTags,
+      if (firstPhotoRef != null) 'first_photo_ref': firstPhotoRef,
     };
   }
 

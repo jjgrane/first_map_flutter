@@ -4,10 +4,11 @@ import 'package:first_maps_project/widgets/models/map_info.dart';
 import 'package:first_maps_project/widgets/models/map_marker.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/services/maps/emoji_marker_converter.dart';
-import 'package:first_maps_project/services/firebase/maps/firebase_markers_service.dart';
+import 'package:first_maps_project/services/api/markers_api_service.dart';
 import 'package:first_maps_project/services/firebase/groups/firebase_groups_service.dart';
 import 'package:first_maps_project/widgets/models/group.dart';
 import 'package:first_maps_project/services/maps/google_maps_pins_service.dart';
+import 'package:first_maps_project/services/api/maps_api_service.dart';
 import 'package:flutter/foundation.dart';
 
 // =============================================================================
@@ -18,8 +19,12 @@ final markerConverterProvider = Provider<EmojiMarkerConverter>((ref) {
   return EmojiMarkerConverter();
 });
 
-final firebaseMarkersServiceProvider = Provider<FirebaseMarkersService>((ref) {
-  return FirebaseMarkersService();
+final markersApiServiceProvider = Provider<MarkersApiService>((ref) {
+  return MarkersApiService();
+});
+
+final mapsApiServiceProvider = Provider<MapsApiService>((ref) {
+  return MapsApiService();
 });
 
 final googleMapsPinsServiceProvider = Provider<GoogleMapsPinsService>((ref) {
@@ -31,14 +36,31 @@ final googleMapsPinsServiceProvider = Provider<GoogleMapsPinsService>((ref) {
 // =============================================================================
 
 class ActiveMapNotifier extends StateNotifier<MapInfo?> {
-  ActiveMapNotifier() : super(null);
+  final MapsApiService _mapsService;
 
-  void setActiveMap(MapInfo map) => state = map;
+  ActiveMapNotifier(this._mapsService) : super(null);
+
+  Future<void> setActiveMap(MapInfo map) async {
+    try {
+      // Verify map exists in API
+      final existingMap = await _mapsService.fetchMapById(map.id!);
+      if (existingMap != null) {
+        state = existingMap;
+      } else {
+        throw Exception('Map not found');
+      }
+    } catch (error) {
+      debugPrint('Error setting active map: $error');
+      state = null;
+    }
+  }
+
   void clearActiveMap() => state = null;
 }
 
 final activeMapProvider = StateNotifierProvider<ActiveMapNotifier, MapInfo?>((ref) {
-  return ActiveMapNotifier();
+  final mapsService = ref.watch(mapsApiServiceProvider);
+  return ActiveMapNotifier(mapsService);
 });
 
 // =============================================================================
@@ -47,7 +69,7 @@ final activeMapProvider = StateNotifierProvider<ActiveMapNotifier, MapInfo?>((re
 
 class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
   final Ref ref;
-  final FirebaseMarkersService _markersService;
+  final MarkersApiService _markersService;
   final String? mapId;
 
   MarkerNotifier(this.ref, this._markersService, this.mapId) : super(const AsyncValue.loading());
@@ -60,7 +82,7 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
 
     try {
       state = const AsyncValue.loading();
-      final markers = await _markersService.getMarkersByMapId(mapId!);
+      final markers = await _markersService.fetchMarkersByMapId(mapId!);
       // Enriquecer cada MapMarker con su googleMarker
       final groups = ref.read(groupsStateProvider).maybeWhen(
         data: (g) => g,
@@ -80,16 +102,15 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
 
   Future<void> addMarker(MapMarker marker) async {
     try {
-      final markerId = await _markersService.addMarker(marker);
-      final updatedMarker = marker.copyWith(markerId: markerId);
+      final createdMarker = await _markersService.createMarker(marker);
       // Enriquecer con googleMarker
       final groups = ref.read(groupsStateProvider).maybeWhen(
         data: (g) => g,
         orElse: () => <Group>[],
       );
       final pinsService = ref.read(googleMapsPinsServiceProvider);
-      final googleMarker = await pinsService.createGoogleMarker(updatedMarker, groups, ref: ref);
-      final enrichedMarker = updatedMarker.copyWith(googleMarker: googleMarker);
+      final googleMarker = await pinsService.createGoogleMarker(createdMarker, groups, ref: ref);
+      final enrichedMarker = createdMarker.copyWith(googleMarker: googleMarker);
       state.whenData((markers) {
         state = AsyncValue.data([...markers, enrichedMarker]);
       });
@@ -101,7 +122,7 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
 
   Future<void> removeMarker(String markerId) async {
     try {
-      await _markersService.removeMarker(markerId);
+      await _markersService.deleteMarker(markerId);
       state.whenData((markers) {
         state = AsyncValue.data(
           markers.where((m) => m.markerId != markerId).toList(),
@@ -115,15 +136,15 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
 
   Future<void> updateMarker(MapMarker marker) async {
     try {
-      await _markersService.updateMarker(marker);
+      final updatedMarker = await _markersService.updateMarker(marker);
       // Enriquecer con googleMarker
       final groups = ref.read(groupsStateProvider).maybeWhen(
         data: (g) => g,
         orElse: () => <Group>[],
       );
       final pinsService = ref.read(googleMapsPinsServiceProvider);
-      final googleMarker = await pinsService.createGoogleMarker(marker, groups, ref: ref);
-      final enrichedMarker = marker.copyWith(googleMarker: googleMarker);
+      final googleMarker = await pinsService.createGoogleMarker(updatedMarker, groups, ref: ref);
+      final enrichedMarker = updatedMarker.copyWith(googleMarker: googleMarker);
       state.whenData((markers) {
         final updatedMarkers = markers.map((m) => 
           m.markerId == marker.markerId ? enrichedMarker : m
@@ -138,7 +159,7 @@ class MarkerNotifier extends StateNotifier<AsyncValue<List<MapMarker>>> {
 }
 
 final markersStateProvider = StateNotifierProvider<MarkerNotifier, AsyncValue<List<MapMarker>>>((ref) {
-  final markersService = ref.watch(firebaseMarkersServiceProvider);
+  final markersService = ref.watch(markersApiServiceProvider);
   final activeMap = ref.watch(activeMapProvider);
   return MarkerNotifier(ref, markersService, activeMap?.id);
 });
