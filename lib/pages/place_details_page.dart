@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/widgets/models/map_marker.dart';
 import 'package:first_maps_project/pages/map_page/groups_view_page.dart';
-import 'package:first_maps_project/providers/maps/map_providers.dart';
+import 'package:first_maps_project/providers/maps/markers/marker_providers.dart';
+import 'package:first_maps_project/providers/maps/group/group_providers.dart';
 import 'package:first_maps_project/widgets/models/group.dart';
 
 class PlaceDetailsPage extends ConsumerWidget {
-  const PlaceDetailsPage({super.key});
+  const PlaceDetailsPage({super.key, required this.marker});
+  final MapMarker marker;
 
   void _showSnack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -28,13 +30,13 @@ class PlaceDetailsPage extends ConsumerWidget {
     }
 
     // Observar el marcador actual
-    final currentMarker = ref.watch(selectedMarkerProvider);
-    final isSaved = currentMarker?.markerId != null;
+    final currentMarker = marker;
+    final isSaved = currentMarker.markerId != null;
 
     // Buscar el emoji del grupo si el marcador está guardado
     String? savedEmoji;
     if (isSaved && currentMarker?.groupId != null) {
-      final groupsAsync = ref.watch(groupsStateProvider);
+      final groupsAsync = ref.watch(groupsProvider);
       groupsAsync.whenData((groups) {
         Group? group;
         for (final g in groups) {
@@ -118,8 +120,8 @@ class PlaceDetailsPage extends ConsumerWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () async {
-                        await ref.read(markersStateProvider.notifier)
-                          .removeMarker(currentMarker!.markerId!);
+                        await ref.read(markersProvider.notifier)
+                          .removeMarker(currentMarker.markerId!);
                         if (context.mounted) {
                           _showSnack(context, '🗑️ Lugar eliminado');
                         }

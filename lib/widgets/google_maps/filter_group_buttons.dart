@@ -1,3 +1,5 @@
+import 'package:first_maps_project/providers/maps/group/group_providers.dart';
+import 'package:first_maps_project/providers/maps/markers/google_marker_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:first_maps_project/widgets/models/group.dart';
@@ -47,37 +49,37 @@ class _FilterGroupButtonsState extends ConsumerState<FilterGroupButtons> with Si
 
   Future<void> _onGroupTap(List<Group> groups, Group tapped) async {
     final activeGroupsBefore = groups.where((g) => g.active).toList();
-    final notifier = ref.read(groupsStateProvider.notifier);
+    final notifier = ref.read(groupsProvider.notifier);
     // If all groups are active, deactivate all and activate only tapped
     if (activeGroupsBefore.length == groups.length) {
       for (final g in groups) {
-        notifier.toggleGroupActive(g.id!);
+        //notifier.toggleGroupActive(g.id!);
       }
-      notifier.toggleGroupActive(tapped.id!); // Activate tapped
+      //notifier.toggleGroupActive(tapped.id!); // Activate tapped
     } else if (tapped.active) {
       // If tapped group is active
       if (activeGroupsBefore.length == 1) {
         // If it was the only active group, activate all others except this one
         for (final g in groups) {
           if (g.id != tapped.id) {
-            notifier.toggleGroupActive(g.id!);
+            //notifier.toggleGroupActive(g.id!);
           }
         }
-        notifier.toggleGroupActive(tapped.id!); // Deactivate tapped
+        //notifier.toggleGroupActive(tapped.id!); // Deactivate tapped
       } else {
-        notifier.toggleGroupActive(tapped.id!); // Deactivate tapped
+        //notifier.toggleGroupActive(tapped.id!); // Deactivate tapped
       }
     } else {
       // If tapped group is inactive, activate it
-      notifier.toggleGroupActive(tapped.id!);
+//notifier.toggleGroupActive(tapped.id!);
     }
     // After toggling, update the filter
-    final updatedGroups = ref.read(groupsStateProvider).maybeWhen(
+    final updatedGroups = ref.read(groupsProvider).maybeWhen(
       data: (g) => g,
       orElse: () => <Group>[],
     );
     final activeIds = updatedGroups.where((g) => g.active).map((g) => g.id!).toList();
-    await ref.read(googleMapMarkersProvider.notifier).groupFilter();
+    //await ref.read(googleMapMarkersProvider.notifier).groupFilter();
     // Log pins count after filter
     final pinsCount = ref.read(googleMapMarkersProvider).maybeWhen(
       data: (pins) => pins.length,
@@ -87,7 +89,7 @@ class _FilterGroupButtonsState extends ConsumerState<FilterGroupButtons> with Si
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(groupsStateProvider);
+    final groupsAsync = ref.watch(groupsProvider);
     return groupsAsync.when(
       data: (groups) {
         if (groups.isEmpty) return const SizedBox.shrink();

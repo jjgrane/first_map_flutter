@@ -1,14 +1,10 @@
+import 'package:first_maps_project/providers/maps/markers/google_marker_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:first_maps_project/providers/maps/map_providers.dart';
-import 'package:first_maps_project/widgets/models/map_marker.dart';
-import 'package:first_maps_project/widgets/models/group.dart';
-import 'package:first_maps_project/widgets/models/map_info.dart';
-import 'package:first_maps_project/providers/maps/map_providers.dart';
 
 class MapView extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
@@ -118,30 +114,9 @@ class MapViewState extends State<MapView> {
   LatLng? get currentLocation => _currentLocation;
 }
 
-// Provider combinado para inicializar pins solo cuando cambia el mapa y todo está listo
-final mapReadyProvider =
-    Provider<({List<MapMarker> markers, List<Group> groups, MapInfo map})?>((
-      ref,
-    ) {
-      final activeMap = ref.watch(activeMapProvider);
-      final markersAsync = ref.watch(markersStateProvider);
-      final groupsAsync = ref.watch(groupsStateProvider);
 
-      if (activeMap != null &&
-          markersAsync is AsyncData<List<MapMarker>> &&
-          groupsAsync is AsyncData<List<Group>>) {
-        // Asegura que los valores no sean null
-        final markers = markersAsync.value ?? <MapMarker>[];
-        final groups = groupsAsync.value ?? <Group>[];
-        return (markers: markers, groups: groups, map: activeMap);
-      }
-      return null;
-    });
-
-/// Widget that manages markers using Riverpod
 class _MarkerSetConsumer extends ConsumerStatefulWidget {
   final void Function(Set<Marker>) onMarkersUpdated;
-
   const _MarkerSetConsumer({required this.onMarkersUpdated});
 
   @override
@@ -149,57 +124,17 @@ class _MarkerSetConsumer extends ConsumerStatefulWidget {
 }
 
 class _MarkerSetConsumerState extends ConsumerState<_MarkerSetConsumer> {
-  bool _markersInitialized = false;
-  String? _lastMapId;
-
   @override
   Widget build(BuildContext context) {
-    ref.watch(activeMapResetProvider);
-    ref.listen(googleMapMarkersProvider, (previous, next) {
-      next.whenData((markers) {
-        widget.onMarkersUpdated(markers);
-      });
-    });
-    ref.listen(mapReadyProvider, (prev, next) {
-      if (next != null && !_markersInitialized) {
-        ref
-            .read(googleMapMarkersProvider.notifier)
-            .initialize(
-              next.markers,
-              ref.read(selectedMarkerProvider),
-              next.groups,
-            );
-        _markersInitialized = true;
-      }
-    });
-    // Listen for changes in the selected marker and update Google markers
-    ref.listen(selectedMarkerProvider, (prev, next) {
-      final markersAsync = ref.read(markersStateProvider);
-      final groupsAsync = ref.read(groupsStateProvider);
-      if (markersAsync is AsyncData && groupsAsync is AsyncData) {
-        ref
-            .read(googleMapMarkersProvider.notifier)
-            .updateSelectedMarker(
-              markersAsync.value ?? [],
-              next,
-              groupsAsync.value ?? [],
-            );
-      }
-    });
+    // Único listener: cada vez que `googleMapMarkersProvider`
+    // emite un AsyncData se pasa el set de pins al MapView.
+    ref.listen<AsyncValue<Set<Marker>>>(
+      googleMapMarkersProvider,
+      (prev, next) => next.whenData(widget.onMarkersUpdated),
+    );
 
-    // Flag logic: only load markers once per map id
-    final groupsAsync = ref.watch(groupsStateProvider);
-    final mapId = ref.watch(activeMapProvider)?.id;
-    if (mapId != _lastMapId) {
-      _markersInitialized = false;
-      _lastMapId = mapId;
-    }
-    if (!_markersInitialized && groupsAsync is AsyncData<List<Group>>) {
-      if (mapId != null) {
-        ref.read(markersStateProvider.notifier).loadMarkers();
-      }
-    }
-
+    // No necesita mostrar nada.
     return const SizedBox.shrink();
   }
 }
+

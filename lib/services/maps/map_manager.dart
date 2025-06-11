@@ -1,6 +1,5 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:first_maps_project/widgets/models/place_information.dart';
-import 'package:first_maps_project/widgets/models/map_info.dart';
 import 'package:first_maps_project/services/maps/places_service.dart';
 import 'package:first_maps_project/services/firebase/maps/firebase_maps_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,11 +8,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class MapManager {
   GoogleMapController? mapController;
   final PlacesService _placesService;
-  final FirebaseMapsService _mapsService;
 
   MapManager({this.mapController})
-      : _placesService = PlacesService(dotenv.env['GOOGLE_MAPS_API_KEY']!),
-        _mapsService = FirebaseMapsService();
+      : _placesService = PlacesService(dotenv.env['GOOGLE_MAPS_API_KEY']!);
 
   PlacesService get placesService => _placesService;
 
@@ -32,15 +29,9 @@ class MapManager {
     );
   }
 
-  /// Handles selection of a place marker on the map. Returns the selected place.
-  PlaceInformation selectPlace(PlaceInformation place) {
-    // This method can be expanded to handle marker logic if needed
-    return place;
-  }
-
   /// Handles selection of a place from search or elsewhere.
   /// Fetches place details if needed, animates camera, and returns the updated place.
-  Future<PlaceInformation?> handlePlaceSelected(
+  Future<PlaceInformation?> moveCameraTo(
     PlaceInformation place,
     String? sessionToken,
   ) async {
@@ -59,17 +50,6 @@ class MapManager {
       mapController!.animateCamera(CameraUpdate.newLatLngZoom(coords, 15));
     }
     return updatedPlace;
-  }
-
-  /// Loads the default map from the backend and returns it.
-  Future<MapInfo?> loadDefaultMap() async {
-    final maps = await _mapsService.getAllMaps();
-    final def = maps.firstWhere(
-      (m) => m.name == 'default',
-      orElse: () => MapInfo(id: '', name: '', owner: ''),
-    );
-    if (def.id!.isEmpty) return null;
-    return def;
   }
 
   void moveTo(LatLng target, {double zoom = 15}) {

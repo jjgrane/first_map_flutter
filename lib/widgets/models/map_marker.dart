@@ -11,6 +11,7 @@ class MapMarker {
   final PlaceInformation? information;
   final String? groupId;
   final Marker? googleMarker;
+  final bool visible;
   
 
   MapMarker({
@@ -20,6 +21,7 @@ class MapMarker {
     this.information,
     this.groupId,
     this.googleMarker,
+    this.visible = true,
   });
 
   /// Creates a copy of this MapMarker with the given fields replaced with the new values
@@ -30,6 +32,7 @@ class MapMarker {
     PlaceInformation? information,
     String? groupId,
     Marker? googleMarker,
+    bool? visible,
   }) {
     return MapMarker(
       markerId: markerId ?? this.markerId,
@@ -38,6 +41,7 @@ class MapMarker {
       information: information ?? this.information,
       groupId: groupId ?? this.groupId,
       googleMarker: googleMarker ?? this.googleMarker,
+      visible: visible ?? this.visible,
     );
   }
 

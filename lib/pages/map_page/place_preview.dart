@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:first_maps_project/widgets/models/place_information.dart';
 import 'package:first_maps_project/widgets/models/map_marker.dart';
 import 'package:first_maps_project/pages/map_page/groups_view_page.dart';
 import 'package:first_maps_project/services/maps/places_service.dart';
-import 'package:first_maps_project/providers/maps/map_providers.dart';
+import 'package:first_maps_project/providers/maps/markers/marker_providers.dart';
+import 'package:first_maps_project/providers/maps/group/group_providers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -52,22 +52,24 @@ class _PlacePreviewState extends ConsumerState<PlacePreview> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final place = ref.watch(selectedPlaceProvider);
-    
-    // Manejar la animación basada en si hay un lugar seleccionado
+
+    // Si todavía no hay lugar seleccionado, no mostrar preview
     if (place == null) {
+      // Asegura que la animación esté oculta
       _controller.reverse();
-    } else {
-      _controller.forward();
+      return const SizedBox.shrink();
     }
+    _controller.forward();
+    final currentMarker  = ref.read(markersProvider.notifier)
+                    .markerForPlace(place);
 
     // Observar el marcador actual
-    final currentMarker = ref.watch(selectedMarkerProvider);
-    final isSaved = currentMarker?.markerId != null;
+    final isSaved = currentMarker.markerId != null;
 
     // Buscar el emoji del grupo si el marcador está guardado
     String? savedEmoji;
-    if (isSaved && currentMarker?.groupId != null) {
-      final groupsAsync = ref.watch(groupsStateProvider);
+    if (isSaved && currentMarker.groupId != null) {
+      final groupsAsync = ref.watch(groupsProvider);
       groupsAsync.whenData((groups) {
         Group? group;
         for (final g in groups) {
@@ -284,22 +286,13 @@ class _PlacePreviewState extends ConsumerState<PlacePreview> with SingleTickerPr
     );
   }
 
-  Future<void> _onAddTapped(MapMarker? currentMarker) async {
+  Future<void> _onAddTapped(MapMarker currentMarker) async {
     final result = await Navigator.push<MapMarker?>(
       context,
       MaterialPageRoute(
         builder: (_) => GroupsViewPage(currentMarker: currentMarker),
       ),
     );
-    
-    if (result != null) {
-      // Update the marker in the state
-      if (result.markerId != null) {
-        await ref.read(markersStateProvider.notifier).updateMarker(result);
-      } else {
-        await ref.read(markersStateProvider.notifier).addMarker(result);
-      }
-    }
   }
 
   Widget _actionButton(

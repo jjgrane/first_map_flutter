@@ -58,7 +58,7 @@ class FirebaseGroupsService {
       final doc = await _groupsRef.doc(groupId).get();
       if (!doc.exists) return null;
       final data = doc.data() as Map<String, dynamic>;
-      return Group.fromFirestore(data, doc.id);
+      return Group.fromFirestoreAsync(data, doc.id);
     } catch (error) {
       print('Error getting group $groupId: $error');
       rethrow;
@@ -83,16 +83,5 @@ class FirebaseGroupsService {
       debugPrint('[FirebaseGroupsService] getGroupsByMapId: error getting groups for map $mapId: $error');
       rethrow;
     }
-  }
-
-  /// Stream of groups for a given map
-  Stream<List<Group>> streamGroupsByMapId(String mapId) {
-    return _groupsRef
-        .where('map_id', isEqualTo: mapId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return Group.fromFirestore(data, doc.id);
-            }).toList());
   }
 } 

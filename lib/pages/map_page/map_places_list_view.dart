@@ -1,76 +1,50 @@
+import 'package:first_maps_project/providers/maps/group/group_providers.dart';
+import 'package:first_maps_project/providers/maps/markers/marker_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:first_maps_project/providers/maps/map_providers.dart';
-import 'package:first_maps_project/widgets/models/map_marker.dart';
-import 'package:first_maps_project/widgets/models/group.dart';
 import 'package:first_maps_project/pages/place_details_page.dart';
 
-class MapPlacesListView extends StatefulWidget {
+class MapPlacesListView extends ConsumerStatefulWidget {
   const MapPlacesListView({super.key});
 
   @override
-  State<MapPlacesListView> createState() => _MapPlacesListViewState();
+  ConsumerState<MapPlacesListView> createState() =>
+      _MapPlacesListViewState();
 }
 
-class _MapPlacesListViewState extends State<MapPlacesListView> {
+class _MapPlacesListViewState extends ConsumerState<MapPlacesListView> {
   final Set<String> _expandedGroupIds = {};
-  List<Group> _groups = [];
-  List<MapMarker> _markers = [];
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    final container = ProviderScope.containerOf(context, listen: false);
-    final groupsAsync = container.read(groupsStateProvider);
-    final markersAsync = container.read(markersStateProvider);
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    // Handle groups
-    groupsAsync.when(
-      data: (groups) => _groups = groups,
-      loading: () => _loading = true,
-      error: (err, _) {
-        _error = err.toString();
-        _groups = [];
-      },
-    );
-    // Handle markers
-    markersAsync.when(
-      data: (markers) => _markers = markers,
-      loading: () => _loading = true,
-      error: (err, _) {
-        _error = err.toString();
-        _markers = [];
-      },
-    );
-    setState(() {
-      _loading = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: Text('All Places')),
-        body: const Center(child: CircularProgressIndicator()),
+    // Datos reactivos
+    final groupsAsync  = ref.watch(groupsProvider);
+    final markersAsync = ref.watch(markersProvider);
+
+    // Combinar estados: mostrar spinner si cualquiera carga
+    if (groupsAsync.isLoading || markersAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
-    if (_error != null) {
+    // Manejo de errores
+    if (groupsAsync.hasError) {
       return Scaffold(
         appBar: AppBar(title: const Text('All Places')),
-        body: Center(child: Text('Error: $_error')),
+        body: Center(child: Text('Error: $groupsAsync.error')),
       );
     }
-    if (_groups.isEmpty) {
+    if (markersAsync.hasError) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('All Places')),
+        body: Center(child: Text('Error: $markersAsync.error')),
+      );
+    }
+
+    final groups  = groupsAsync.value!;
+    final markers = markersAsync.value!;
+
+    if (groups.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('All Places')),
         body: const Center(child: Text('No groups available.')),
@@ -79,8 +53,8 @@ class _MapPlacesListViewState extends State<MapPlacesListView> {
     return Scaffold(
       appBar: AppBar(title: const Text('All Places')),
       body: ListView(
-        children: _groups.map((group) {
-          final groupPlaces = _markers.where((m) => m.groupId == group.id).toList();
+        children: groups.map((group) {
+          final groupPlaces = markers.where((m) => m.groupId == group.id).toList();
           final isExpanded = _expandedGroupIds.contains(group.id);
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -115,7 +89,7 @@ class _MapPlacesListViewState extends State<MapPlacesListView> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const PlaceDetailsPage(),
+                                builder: (_) => PlaceDetailsPage(marker: marker),
                               ),
                             );
                           }

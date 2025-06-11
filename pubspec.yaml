@@ -44,20 +44,24 @@ dependencies:
   intl: ^0.18.1
   url_launcher: ^6.2.5
   flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.4.0
   emoji_picker_flutter: ^1.6.4
   
 
 
 dev_dependencies:
   flutter_test:
-    sdk: flutter
+    sdk: flutter               # sigue igual
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0   # code-gen para Riverpod
+  custom_lint: ^0.6.0          # motor de lints
+  riverpod_lint: ^2.0.0        # <-- versión correcta
+  flutter_lints: ^5.0.0        # ya la tenías
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+# opcional, para que custom_lint funcione
+dart_custom_lint:
+  rules:
+    - riverpod
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

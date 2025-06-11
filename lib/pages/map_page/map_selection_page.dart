@@ -31,7 +31,7 @@ class MapSelectionPage extends ConsumerWidget {
             );
           }
           final maps = snapshot.data!;
-          final currentMapId = ref.read(activeMapProvider)?.id;
+          final currentMapId = ref.read(activeMapProvider).value?.id;
           
           return ListView.separated(
             itemCount: maps.length + 1,
@@ -54,7 +54,7 @@ class MapSelectionPage extends ConsumerWidget {
                     ? const Icon(Icons.check, color: Colors.green)
                     : null,
                 onTap: () {
-                  ref.read(activeMapProvider.notifier).setActiveMap(map);
+                  ref.read(activeMapProvider.notifier).select(map);
                   Navigator.pop(context);
                 },
               );
@@ -90,7 +90,7 @@ class MapSelectionPage extends ConsumerWidget {
 
     if (result != null && result.isNotEmpty) {
       final newMap = await mapsService.addMap(MapInfo(name: result));
-      ref.read(activeMapProvider.notifier).setActiveMap(newMap);
+      ref.read(activeMapProvider.notifier).select(newMap);
       Navigator.pop(context);
     }
   }

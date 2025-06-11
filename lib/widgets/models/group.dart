@@ -135,13 +135,11 @@ class Group {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is Group &&
-          runtimeType == other.runtimeType &&
           id == other.id &&
           mapId == other.mapId &&
           name == other.name &&
           description == other.description &&
-          emoji == other.emoji &&
-          active == other.active;
+          emoji == other.emoji;
 
   @override
   int get hashCode =>
@@ -149,8 +147,7 @@ class Group {
       mapId.hashCode ^
       name.hashCode ^
       description.hashCode ^
-      emoji.hashCode ^
-      active.hashCode;
+      emoji.hashCode;
 
   @override
   String toString() {
